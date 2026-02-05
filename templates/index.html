@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qanoon AI - Pakistan</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09090b;
+            --panel-bg: rgba(24, 24, 27, 0.6);
+            --border: #27272a;
+            --neon-green: #22c55e;
+            --neon-red: #ef4444;
+            --text-main: #e4e4e7;
+            --text-muted: #a1a1aa;
+        }
+        body { 
+            font-family: 'Outfit', sans-serif; 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            margin: 0; 
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* URDU FONT CLASS */
+        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; line-height: 2 !important; }
+
+        /* SIDEBAR */
+        .sidebar { width: 340px; background: var(--panel-bg); backdrop-filter: blur(12px); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
+        .brand { font-size: 1.8rem; font-weight: 700; color: var(--neon-green); margin-bottom: 25px; letter-spacing: -1px; }
+
+        .lawyer-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .lawyer-list { flex: 1; overflow-y: auto; }
+        .lawyer-card { background: linear-gradient(145deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01)); border: 1px solid var(--border); padding: 15px; border-radius: 12px; margin-bottom: 12px; cursor: pointer; transition: 0.2s; }
+        .lawyer-card:hover { border-color: var(--neon-green); transform: translateY(-3px); }
+        .lawyer-name { font-weight: 600; color: white; font-size: 0.95rem; }
+        .lawyer-spec { font-size: 0.8rem; color: var(--neon-green); }
+        .lawyer-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; display: flex; justify-content: space-between; }
+
+        /* MAIN AREA */
+        .main { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #11231c 0%, #09090b 40%); position: relative; }
+        
+        /* LANGUAGE TOGGLE */
+        .top-bar { position: absolute; top: 20px; right: 20px; z-index: 10; }
+        .lang-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: 0.3s;
+            min-width: 150px;
+            text-align: center;
+        }
+        .lang-btn:hover { background: var(--neon-green); color: black; border-color: var(--neon-green); }
+
+        .chat-box { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-top: 40px; }
+        .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.6; font-size: 1rem; animation: slideUp 0.3s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .msg.bot { background: #18181b; border: 1px solid var(--border); color: #d4d4d8; }
+        .msg.user { align-self: flex-end; background: var(--neon-green); color: black; font-weight: 500; }
+
+        .grid-container { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
+        
+        .category-card { 
+            background: transparent; 
+            border: none; 
+            padding: 8px 12px; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            transition: 0.2s; 
+            text-align: left;
+            font-size: 0.95rem;
+            color: var(--text-main); 
+        }
+        .category-card:hover { 
+            color: var(--neon-green); 
+            transform: translateX(10px); 
+        }
+        .cat-title { font-weight: 400; } 
+
+        .input-area { 
+            padding: 20px 30px 10px 30px; 
+            background: var(--bg-dark); 
+            border-top: 1px solid var(--border); 
+            display: flex; 
+            gap: 15px; 
+        }
+        input { flex: 1; background: #121214; border: 1px solid var(--border); color: white; padding: 18px 25px; border-radius: 12px; outline: none; font-size: 1rem; }
+        input:focus { border-color: var(--neon-green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+        button { background: var(--neon-green); color: black; border: none; width: 60px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
+        
+        .footer { 
+            width: 100%; 
+            text-align: center; 
+            font-size: 0.9rem; 
+            color: #71717a; 
+            font-weight: 700; 
+            letter-spacing: 0.5px;
+            padding-bottom: 15px; 
+            padding-top: 5px;
+        }
+        #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="brand">Qanoon AI</div>
+        
+        <div class="lawyer-header" id="lawyerHeader">Recommended Lawyers</div>
+        <div class="lawyer-list" id="lawyerList">
+            <div style="text-align:center; color:#52525b; margin-top:20px;" id="lawyerPlaceholder">Ask a question</div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="top-bar">
+            <button class="lang-btn" onclick="toggleLanguage()">Urdu / English</button>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+            <div class="msg bot" id="welcomeMsg">
+                <strong>Assalam-o-Alaikum!</strong> 👋<br>
+                I am your legal assistant. How may I help you?<br>
+                Sample Questions:
+                <div class="grid-container" id="gridContainer"></div>
+            </div>
+        </div>
+
+        <div id="loading">Analyzing Legal Documents...</div>
+
+        <div class="input-area">
+            <input type="text" id="userInput" placeholder="Type your legal scenario here..." onkeydown="handleEnter(event)">
+            <button onclick="sendUserMessage()">➤</button>
+        </div>
+        
+        <div class="footer">Created by Muhammad Umair Ashraf</div>
+    </div>
+
+    <script>
+        let currentLang = 'en';
+
+        // DEFINING CONTENT DATA CAREFULLY
+        const CONTENT = {
+            en: {
+                placeholder: "Type your legal scenario here...",
+                loading: "Analyzing Legal Documents...",
+                welcome: "<strong>Assalam-o-Alaikum!</strong> 👋<br>I am your legal assistant. How may I help you?<br>Sample Questions:",
+                lawyerHeader: "Recommended Lawyers",
+                lawyerPlaceholder: "Ask a question.",
+                cards: [
+                    { title: "What is the punishment for theft?", query: "What is the punishment for theft under PPC?" },
+                    { title: "How to file for divorce?", query: "How to file for divorce in Pakistan?" },
+                    { title: "Is hacking a crime?", query: "Is hacking a crime in Pakistan?" },
+                    { title: "What makes a contract valid?", query: "What makes a contract valid?" },
+                    { title: "How to become a tax filer?", query: "How to become a tax filer in Pakistan?" }
+                ]
+            },
+            ur: {
+                placeholder: "اپنا قانونی سوال یہاں لکھیں...",
+                loading: "✨ دستاویزات کی جانچ پڑتال ہو رہی ہے...",
+                welcome: "<strong>السلام علیکم!</strong> 👋<br>میں آپ کا قانونی مشیر ہوں۔<br>ایک سوال منتخب کریں:",
+                lawyerHeader: "تصدیق شدہ وکلاء",
+                lawyerPlaceholder: "وکیل تلاش کرنے کے لیے سوال پوچھیں۔",
+                cards: [
+                    { title: "چوری کی سزا کیا ہے؟", query: "چوری کی سزا کیا ہے؟" },
+                    { title: "طلاق کا طریقہ کار کیا ہے؟", query: "طلاق کا طریقہ کار کیا ہے؟" },
+                    { title: "کیا ہیکنگ ایک جرم ہے؟", query: "کیا ہیکنگ ایک جرم ہے؟" },
+                    { title: "معاہدہ کیسے قانونی ہوتا ہے؟", query: "معاہدہ کیسے قانونی ہوتا ہے؟" },
+                    { title: "ٹیکس فائلر کیسے بنیں؟", query: "ٹیکس فائلر کیسے بنیں؟" }
+                ]
+            }
+        };
+
+        window.onload = async function() {
+            renderGrid();
+        };
+
+        function toggleLanguage() {
+            // 1. Toggle Language State
+            currentLang = currentLang === 'en' ? 'ur' : 'en';
+            const data = CONTENT[currentLang];
+            const input = document.getElementById('userInput');
+            
+            // 2. Update UI Directions & Fonts
+            document.body.classList.toggle('urdu-font', currentLang === 'ur');
+            input.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
+            input.placeholder = data.placeholder;
+
+            // 3. Update Text Elements
+            document.getElementById('loading').innerText = data.loading;
+            document.getElementById('lawyerHeader').innerText = data.lawyerHeader;
+            document.getElementById('lawyerPlaceholder').innerText = data.lawyerPlaceholder;
+            
+            // 4. RESET WELCOME MSG AND RE-ADD THE GRID CONTAINER
+            const welcomeDiv = document.getElementById('welcomeMsg');
+            welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
+            welcomeDiv.classList.toggle('urdu-font', currentLang === 'ur');
+            welcomeDiv.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
+            
+            // 5. Force Re-render of Grid
+            renderGrid();
+        }
+
+        function renderGrid() {
+            const container = document.getElementById('gridContainer');
+            if (!container) return; // Safety check
+            container.innerHTML = "";
+            
+            // Load cards based on currentLang
+            CONTENT[currentLang].cards.forEach(card => {
+                const div = document.createElement('div');
+                div.className = 'category-card';
+                div.onclick = () => sendText(card.query);
+                div.innerHTML = `<span class="cat-title">➤ ${card.title}</span>`;
+                if (currentLang === 'ur') div.style.textAlign = 'right';
+                container.appendChild(div);
+            });
+        }
+
+        async function fetchSmartLawyers(query) {
+            let category = "general";
+            const q = query.toLowerCase();
+            if (q.includes("divorce") || q.includes("طلاق") || q.includes("khula")) category = "family";
+            else if (q.includes("theft") || q.includes("چوری") || q.includes("murder") || q.includes("قتل")) category = "criminal";
+            
+            try {
+                const response = await fetch(`/lawyers?category=${category}`);
+                const lawyers = await response.json();
+                const list = document.getElementById('lawyerList');
+                list.innerHTML = ""; 
+                if(lawyers.length === 0) { list.innerHTML = `<div style="color:#52525b;text-align:center;">No specific lawyers found.</div>`; return; }
+                lawyers.forEach(lawyer => {
+                    const card = document.createElement('div');
+                    card.className = 'lawyer-card';
+                    card.innerHTML = `<div class="lawyer-name">${lawyer.name}</div><div class="lawyer-spec">${lawyer.specialty}</div><div class="lawyer-meta"><span>📍 ${lawyer.city}</span><span>📞 ${lawyer.phone}</span></div>`;
+                    list.appendChild(card);
+                });
+            } catch (error) {}
+        }
+
+        function handleEnter(event) { if (event.key === 'Enter') sendUserMessage(); }
+        function sendText(text) { document.getElementById('userInput').value = text; sendUserMessage(); }
+
+        async function sendUserMessage() {
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            document.getElementById('loading').style.display = 'block';
+
+            addMessage(text, 'user');
+            input.value = ''; 
+            
+            const chatBox = document.getElementById('chatBox');
+            const botDiv = document.createElement('div');
+            botDiv.className = 'msg bot';
+            if (currentLang === 'ur') {
+                botDiv.classList.add('urdu-font');
+                botDiv.dir = 'rtl';
+            }
+            botDiv.innerHTML = ""; 
+            chatBox.appendChild(botDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            fetchSmartLawyers(text);
+
+            try {
+                const response = await fetch('/consult', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text, lang: currentLang })
+                });
+
+                document.getElementById('loading').style.display = 'none';
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullText += chunk;
+                    botDiv.innerHTML = fullText.replace(/\n/g, '<br>');
+                    chatBox.scrollTop = chatBox.scrollHeight;
+                }
+
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                botDiv.innerHTML = "⚠️ Error: Backend not responding.";
+            }
+        }
+
+        function addMessage(text, sender) {
+            const chatBox = document.getElementById('chatBox');
+            const div = document.createElement('div');
+            div.className = `msg ${sender}`;
+            if (currentLang === 'ur' || /[\u0600-\u06FF]/.test(text)) {
+                div.classList.add('urdu-font');
+                div.dir = 'rtl';
+            }
+            div.innerHTML = text.replace(/\n/g, '<br>');
+            chatBox.appendChild(div);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    </script>
+</body>
+</html>

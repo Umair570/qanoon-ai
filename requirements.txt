@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+python-multipart
+requests
+beautifulsoup4
+pypdf2
+langchain
+langchain-community
+faiss-cpu
+sentence-transformers
+datasets
+huggingface_hub
+python-dotenv
+flask

@@ -1,0 +1,136 @@
+[
+  {
+    "name": "Asma Hamid",
+    "firm": "Asma Hamid Associates",
+    "specialty": "Dispute Resolution & Family Law",
+    "city": "Lahore",
+    "phone": "042-35750930",
+    "email": "asma.hamid@asmahamid.law",
+    "tags": ["family", "divorce", "tax", "custody", "civil", "litigation"]
+  },
+  {
+    "name": "Barrister Aitzaz Ahsan",
+    "firm": "Aitzaz Ahsan & Associates",
+    "specialty": "Criminal & Constitutional Law",
+    "city": "Lahore",
+    "phone": "042-35715479",
+    "tags": ["criminal", "murder", "bail", "supreme court", "constitutional", "nab"]
+  },
+  {
+    "name": "Ahmer Bilal Soofi",
+    "firm": "ABS & Co",
+    "specialty": "International Law & Disputes",
+    "city": "Islamabad",
+    "phone": "0300-8591589",
+    "email": "ahmersoofi@absco.pk",
+    "tags": ["dispute", "international", "arbitration", "criminal", "white collar"]
+  },
+  {
+    "name": "Salman Akram Raja",
+    "firm": "Raja Mohammed Akram & Co",
+    "specialty": "Corporate & Constitutional Litigation",
+    "city": "Lahore",
+    "phone": "0300-8445333",
+    "email": "salman.raja@rmaco.com.pk",
+    "tags": ["corporate", "civil", "constitutional", "banking", "tax"]
+  },
+  {
+    "name": "Faisal Mahmood Ghani",
+    "firm": "Faisal Mahmood Ghani & Co",
+    "specialty": "Employment & Labor Law",
+    "city": "Karachi",
+    "phone": "021-35831226",
+    "email": "nidafg@magco.com.pk",
+    "tags": ["labor", "employment", "harassment", "hr", "termination"]
+  },
+  {
+    "name": "Zahid Ebrahim",
+    "firm": "FGE Ebrahim Hosain",
+    "specialty": "Commercial Litigation",
+    "city": "Karachi",
+    "phone": "021-35875833",
+    "email": "z.ebrahim@fge-eh.com",
+    "tags": ["commercial", "arbitration", "civil", "banking"]
+  },
+  {
+    "name": "Amina Ahmed",
+    "firm": "Axis Law Chambers",
+    "specialty": "Energy & Infrastructure Projects",
+    "city": "Lahore",
+    "phone": "0321-3555523",
+    "email": "amina.ahmed@axislaw.pk",
+    "tags": ["energy", "projects", "contracts", "corporate"]
+  },
+  {
+    "name": "Faresa Jafarey Ahsan",
+    "firm": "Liaquat Merchant Associates",
+    "specialty": "Banking & Finance",
+    "city": "Karachi",
+    "phone": "021-35835107",
+    "email": "f.ahsan@lma-eh.com",
+    "tags": ["banking", "finance", "corporate", "tech"]
+  },
+  {
+    "name": "Sameer Khosa",
+    "firm": "Axis Law Chambers",
+    "specialty": "High Court Litigation",
+    "city": "Lahore",
+    "phone": "0300-8008631",
+    "email": "sameer.khosa@axislaw.pk",
+    "tags": ["litigation", "civil", "family", "corporate"]
+  },
+  {
+    "name": "Vaseeq Khalid",
+    "firm": "Mohsin Tayebaly & Co",
+    "specialty": "Mergers & Capital Markets",
+    "city": "Karachi",
+    "phone": "021-111682529",
+    "email": "vaseeq.khalid@mtclaw.com.pk",
+    "tags": ["corporate", "mergers", "finance", "business"]
+  },
+  {
+    "name": "Rabel Akhund",
+    "firm": "Akhund Forbes",
+    "specialty": "Corporate & Finance",
+    "city": "Karachi",
+    "phone": "021-35824912",
+    "email": "rabel.akhund@akhundforbes.com",
+    "tags": ["corporate", "finance", "international"]
+  },
+  {
+    "name": "Mazhar Bangash",
+    "firm": "RIAA Barker Gillette",
+    "specialty": "Trade & Customs Law",
+    "city": "Islamabad",
+    "phone": "051-2852427",
+    "email": "mazhar.bangash@riaabg.com",
+    "tags": ["trade", "customs", "tax", "corporate"]
+  },
+  {
+    "name": "Waqqas Mir",
+    "firm": "Axis Law Chambers",
+    "specialty": "Competition & Regulatory Law",
+    "city": "Lahore",
+    "phone": "042-36672102",
+    "email": "waqqas.mir@axislaw.pk",
+    "tags": ["regulatory", "civil", "competition"]
+  },
+  {
+    "name": "Salman Rahim",
+    "firm": "Mohsin Tayebaly & Co",
+    "specialty": "Transactional Law",
+    "city": "Lahore",
+    "phone": "0321-8472277",
+    "email": "salman.rahim@mtclaw.com.pk",
+    "tags": ["corporate", "banking", "transactions"]
+  },
+  {
+    "name": "Omer Soomro",
+    "firm": "RIAA Barker Gillette",
+    "specialty": "Civil Litigation & White Collar",
+    "city": "Karachi",
+    "phone": "021-111529937",
+    "email": "omer.soomro@riaabg.com",
+    "tags": ["civil", "criminal", "litigation", "white collar"]
+  }
+]
