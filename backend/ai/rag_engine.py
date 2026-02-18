@@ -2,8 +2,7 @@ import os
 import json
 import concurrent.futures
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_google_genai import GoogleGenerativeAIEmbeddings # New lightweight importfrom langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 
 # --- CONFIGURATION ---
@@ -13,14 +12,14 @@ INDEX_NAME = "faiss_index"
 
 class RAGEngine:
     def __init__(self):
-        # --- EMBEDDING MODEL SETUP (Moved Inside Class) ---
-        hf_token = os.getenv("HF_TOKEN")
-        model_kwargs = {'token': hf_token} if hf_token else {}
-
-        print("🔌 Loading Embedding Model...")
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="sentence-transformers/all-MiniLM-L6-v2",
-            model_kwargs=model_kwargs
+        # 2. CHANGE THE EMBEDDING SETUP
+        api_key = os.getenv("GEMINI_API_KEY")
+        
+        print("🔌 Connecting to Google Embeddings...")
+        # This uses Google's servers instead of your RAM
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/embedding-001", 
+            google_api_key=api_key
         )
 
         self.db = None

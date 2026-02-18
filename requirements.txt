@@ -15,8 +15,7 @@ langchain-core
 # --- AI Memory & Embeddings ---
 # Use cpu version to avoid huge file sizes on cloud
 faiss-cpu
-sentence-transformers
-
+langchain-google-genai
 # --- Data Processing ---
 pandas
 PyPDF2
