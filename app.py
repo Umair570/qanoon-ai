@@ -32,7 +32,7 @@ def generate_gemini_response(prompt):
     try:
         # The new method syntax is 'models.generate_content_stream'
         response = client.models.generate_content_stream(
-            model='gemini-2.0-flash', # Updated to a valid model name (gemini-2.5-flash doesn't exist yet publicly, changed to 2.0-flash or 1.5-flash is safer)
+            model='gemini-1.5-flash', # Updated to a valid model name (gemini-2.5-flash doesn't exist yet publicly, changed to 2.0-flash or 1.5-flash is safer)
             contents=prompt
         )
         for chunk in response:
