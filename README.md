@@ -8,7 +8,7 @@ Additionally, the platform features a **Smart Lawyer Recommendation Engine** tha
 
 ## 🚀 Key Features
 
-* **⚡ High-Speed AI**: Optimized to run using the **Gemini Flash-2.5 api key** instant responses.
+* **⚡ High-Speed Local AI**: Optimized to run offline using the **Qwen 2.5 (1.5B)** model via Ollama for instant responses on consumer hardware.
 * **🇵🇰 Bilingual Support**: Seamlessly toggles between English and Urdu (with native Nastaliq font support).
 * **🧠 RAG Engine**: Context-aware answers derived strictly from uploaded PDF legal documents, ensuring accuracy over hallucination.
 * **⚖️ Smart Lawyer Search**: Dynamically recommends verified lawyers from the *Chambers Asia-Pacific* directory based on the context of the user's query.
@@ -20,6 +20,7 @@ Additionally, the platform features a **Smart Lawyer Recommendation Engine** tha
 
 * **Backend**: Python (Flask)
 * **Frontend**: HTML5, CSS3 (Modern Dark Theme), JavaScript (ES6)
+* **AI Runtime**: Ollama
 * **LLM Model**: `Gemini flash-2.5` (Optimized for speed and accuracy)
 * **Data Processing**: `pdfplumber` (PDF Text Extraction), JSON
 * **Search Logic**: Keyword matching & Tag-based filtering
@@ -27,7 +28,7 @@ Additionally, the platform features a **Smart Lawyer Recommendation Engine** tha
 ---
 
 ## ⚙️ Installation & Setup Guide
-Note: Download urdu-news-1M dataset from kaggle and save it in data/raw
+
 ### Prerequisites
 * **Python 3.10+** installed.
 

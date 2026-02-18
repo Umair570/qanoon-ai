@@ -12,3 +12,5 @@ datasets
 huggingface_hub
 python-dotenv
 flask
+genai
+gunicorn

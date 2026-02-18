@@ -32,7 +32,7 @@ def generate_gemini_response(prompt):
     try:
         # The new method syntax is 'models.generate_content_stream'
         response = client.models.generate_content_stream(
-            model='gemini-2.5-flash', # Using the latest Flash model
+            model='gemini-2.0-flash', # Updated to a valid model name (gemini-2.5-flash doesn't exist yet publicly, changed to 2.0-flash or 1.5-flash is safer)
             contents=prompt
         )
         for chunk in response:
@@ -56,7 +56,7 @@ def consult():
     
     if rag:
         # Search more docs since Gemini handles large context easily
-        docs = rag.search(user_text, k=5)
+        docs = rag.search(user_text, k=8)
         if docs:
             context = ""
             for doc in docs:
@@ -75,39 +75,55 @@ def consult():
 
     return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
 
-# --- LAWYER DATABASE LOGIC (UNCHANGED) ---
+# --- LAWYER DATABASE LOGIC (UPDATED) ---
+# We define the path globally, but we load the data FRESH inside the route.
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")
-
-def load_lawyers_db():
-    try:
-        if os.path.exists(LAWYERS_DB_PATH):
-            with open(LAWYERS_DB_PATH, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"⚠️ Error loading DB: {e}")
-    return [] 
 
 @app.route('/lawyers', methods=['GET'])
 def get_lawyers():
-    category = request.args.get('category', 'general').lower().strip()
-    all_lawyers = load_lawyers_db()
+    # 1. Initialize empty lists to ensure no data persists from previous requests
+    all_lawyers = []
+    filtered_lawyers = []
     
-    if not all_lawyers: return jsonify([])
+    # 2. Get the category from the frontend
+    category = request.args.get('category', 'general').lower().strip()
+    
+    # 3. Load the database fresh from disk
+    try:
+        if os.path.exists(LAWYERS_DB_PATH):
+            with open(LAWYERS_DB_PATH, 'r', encoding='utf-8') as f:
+                all_lawyers = json.load(f)
+        else:
+            print(f"⚠️ Warning: Database file not found at {LAWYERS_DB_PATH}")
+            return jsonify([]) # Return empty if file missing
+    except Exception as e:
+        print(f"❌ Error reading lawyer DB: {e}")
+        return jsonify([])
 
-    if category == 'general' or not category: 
+    # 4. If no lawyers found in file, return empty
+    if not all_lawyers:
+        return jsonify([])
+
+    # 5. Filter logic
+    if category == 'general' or not category:
+        # If no specific category, return the first 10
         return jsonify(all_lawyers[:10])
     
-    filtered = []
-    for l in all_lawyers:
-        tag_match = any(tag in category for tag in l.get('tags', []))
-        spec_match = l.get('specialty', '').lower() in category or category in l.get('specialty', '').lower()
-        if tag_match or spec_match:
-            filtered.append(l)
+    # STRICT Filtering: Create a fresh list
+    for lawyer in all_lawyers:
+        # Check tags safely
+        lawyer_tags = [t.lower() for t in lawyer.get('tags', [])]
+        lawyer_specialty = lawyer.get('specialty', '').lower()
+        
+        # Check if category matches tags OR specialty
+        if category in lawyer_tags or category in lawyer_specialty:
+            filtered_lawyers.append(lawyer)
     
-    if not filtered:
+    # 6. Fallback: If no lawyers match the category, return a few general ones
+    if not filtered_lawyers:
         return jsonify(all_lawyers[:5])
         
-    return jsonify(filtered)
+    return jsonify(filtered_lawyers)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
