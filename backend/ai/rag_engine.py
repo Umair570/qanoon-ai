@@ -11,19 +11,27 @@ JSON_FILE_PATH = os.path.join(os.getcwd(), "backend", "data", "processed", "lega
 DB_PATH = os.path.join(os.getcwd(), "backend", "data", "processed")
 INDEX_NAME = "faiss_index"
 
-# --- EMBEDDING MODEL ---
-embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
-
 class RAGEngine:
     def __init__(self):
+        # --- EMBEDDING MODEL SETUP (Moved Inside Class) ---
+        hf_token = os.getenv("HF_TOKEN")
+        model_kwargs = {'token': hf_token} if hf_token else {}
+
+        print("🔌 Loading Embedding Model...")
+        self.embeddings = HuggingFaceEmbeddings(
+            model_name="sentence-transformers/all-MiniLM-L6-v2",
+            model_kwargs=model_kwargs
+        )
+
         self.db = None
         self.load_index()
 
     def load_index(self):
         if os.path.exists(os.path.join(DB_PATH, f"{INDEX_NAME}.faiss")):
             try:
+                # Fixed: Use self.embeddings instead of global 'embeddings'
                 self.db = FAISS.load_local(
-                    DB_PATH, embeddings, index_name=INDEX_NAME, allow_dangerous_deserialization=True
+                    DB_PATH, self.embeddings, index_name=INDEX_NAME, allow_dangerous_deserialization=True
                 )
                 print("✅ AI Memory Loaded Successfully!")
             except Exception as e:
@@ -80,7 +88,9 @@ class RAGEngine:
         
         # Create first batch to initialize DB
         print(f"   [1/{(total_chunks//batch_size)+1}] Processing first {batch_size} chunks...")
-        self.db = FAISS.from_documents(final_docs[:batch_size], embeddings)
+        
+        # Fixed: Use self.embeddings
+        self.db = FAISS.from_documents(final_docs[:batch_size], self.embeddings)
         
         # Loop through the rest
         current = batch_size
@@ -91,7 +101,8 @@ class RAGEngine:
             print(f"   [{batch_num}/{(total_chunks//batch_size)+1}] Processing chunks {current} to {end}...")
             
             # Add new batch to existing memory
-            new_batch_db = FAISS.from_documents(final_docs[current:end], embeddings)
+            # Fixed: Use self.embeddings
+            new_batch_db = FAISS.from_documents(final_docs[current:end], self.embeddings)
             self.db.merge_from(new_batch_db)
             
             current += batch_size
@@ -106,6 +117,7 @@ class RAGEngine:
         results = self.db.similarity_search(query, k=k)
         return [{"text": doc.page_content, "title": doc.metadata.get('title', 'Unknown')} for doc in results]
 
+# Initialize global instance
 rag = RAGEngine()
 
 if __name__ == "__main__":

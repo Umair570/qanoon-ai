@@ -333,7 +333,8 @@
                     
                     const chunk = decoder.decode(value, { stream: true });
                     fullText += chunk;
-                    botDiv.innerHTML = fullText.replace(/\n/g, '<br>');
+                    // Trust the HTML coming from the backend
+                    botDiv.innerHTML = fullText;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
 
