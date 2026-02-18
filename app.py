@@ -32,7 +32,7 @@ def generate_gemini_response(prompt):
     try:
         # The new method syntax is 'models.generate_content_stream'
         response = client.models.generate_content_stream(
-            model='gemini-1.5-flash', # Updated to a valid model name (gemini-2.5-flash doesn't exist yet publicly, changed to 2.0-flash or 1.5-flash is safer)
+            model='gemini-2.5-flash',
             contents=prompt
         )
         for chunk in response:
@@ -56,19 +56,23 @@ def consult():
     
     if rag:
         # Search more docs since Gemini handles large context easily
-        docs = rag.search(user_text, k=8)
+        docs = rag.search(user_text, k=10)
         if docs:
             context = ""
             for doc in docs:
                 context += f"\n--- LEGAL REFERENCE ---\n{doc['text']}\n"
 
     # --- SYSTEM PROMPT ---
+    # --- SYSTEM PROMPT ---
     system_prompt = (
         "You are Qanoon AI, a Pakistani Legal Assistant. "
-        "Answer strictly based on the LEGAL REFERENCES provided below.\n"
+        "Your goal is to provide helpful, accurate legal answers.\n"
+        "Guidelines:\n"
+        "1. PRIORITIZE the LEGAL REFERENCES provided below.\n"
+        "2. If the references are incomplete (e.g., missing a specific Section number), **use your general knowledge of Pakistani Law** to provide the correct answer.\n"
+        "3. **DO NOT** say 'The provided text does not mention', 'The references imply', or 'I cannot find it'. Just state the law directly and confidently.\n"
         f"Output Language: {'URDU (Nastaliq)' if language_mode == 'ur' else 'ENGLISH'}.\n"
         "Format: Use bullet points and bold text for clarity.\n"
-        "If the answer is not in the text, say you don't know."
     )
 
     full_prompt = f"{system_prompt}\nDATA:\n{context}\n\nQUERY: {user_text}"

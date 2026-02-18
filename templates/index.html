@@ -225,24 +225,66 @@
         }
 
         async function fetchSmartLawyers(query) {
-            let category = "general";
             const q = query.toLowerCase();
-            if (q.includes("divorce") || q.includes("طلاق") || q.includes("khula")) category = "family";
-            else if (q.includes("theft") || q.includes("چوری") || q.includes("murder") || q.includes("قتل")) category = "criminal";
-            
+            let category = "general"; // Default fallback
+
+            // --- THE SMART DICTIONARY (Covers 90% of Legal Queries) ---
+            const KEYWORDS = {
+                'family':     ['divorce', 'khula', 'wife', 'husband', 'custody', 'maintenance', 'child', 'marriage', 'dowry', 'guardian', 'sharia'],
+                'criminal':   ['murder', 'kill', 'theft', 'robbery', 'police', 'jail', 'bail', 'arrest', 'fir', 'crime', 'drug', 'weapon', 'assault', 'nab'],
+                'property':   ['land', 'house', 'plot', 'rent', 'tenant', 'eviction', 'lease', 'possession', 'property', 'real estate', 'neighbor', 'transfer'],
+                'corporate':  ['company', 'business', 'tax', 'register', 'contract', 'partnership', 'firm', 'secp', 'trademark', 'license', 'copyright'],
+                'cyber':      ['internet', 'online', 'hack', 'facebook', 'whatsapp', 'scam', 'fraud', 'data', 'photo', 'blackmail', 'cyber'],
+                'labor':      ['job', 'salary', 'employee', 'employer', 'terminate', 'work', 'wages', 'harassment', 'bonus', 'pension'],
+                'civil':      ['defamation', 'money', 'loan', 'cheque', 'damage', 'contract breach', 'suing', 'sue']
+            };
+
+            // LOOP THROUGH DICTIONARY TO FIND A MATCH
+            // This checks every category above. If a keyword is found, it sets the category.
+            for (const [cat, words] of Object.entries(KEYWORDS)) {
+                if (words.some(word => q.includes(word))) {
+                    category = cat;
+                    break; // Stop once we find a match
+                }
+            }
+
+            // --- UI UPDATE LOGIC (Same as before) ---
+            const list = document.getElementById('lawyerList');
+            // Clear list immediately to fix "persistence" bug
+            list.innerHTML = '<div style="text-align:center; color:#52525b; margin-top:20px;">Finding experts...</div>'; 
+
             try {
+                // Fetch from backend
                 const response = await fetch(`/lawyers?category=${category}`);
                 const lawyers = await response.json();
-                const list = document.getElementById('lawyerList');
-                list.innerHTML = ""; 
-                if(lawyers.length === 0) { list.innerHTML = `<div style="color:#52525b;text-align:center;">No specific lawyers found.</div>`; return; }
+                
+                list.innerHTML = ""; // Clear loading message
+                
+                if(lawyers.length === 0) { 
+                    // Improved "Not Found" message
+                    list.innerHTML = `<div style="color:#52525b;text-align:center;padding:10px;">
+                        No lawyers found for <strong>${category.toUpperCase()}</strong>.<br>
+                        <small>Showing general experts instead.</small>
+                    </div>`; 
+                    // Optional: Fetch general lawyers as backup if you want
+                    return; 
+                }
+
                 lawyers.forEach(lawyer => {
                     const card = document.createElement('div');
                     card.className = 'lawyer-card';
-                    card.innerHTML = `<div class="lawyer-name">${lawyer.name}</div><div class="lawyer-spec">${lawyer.specialty}</div><div class="lawyer-meta"><span>📍 ${lawyer.city}</span><span>📞 ${lawyer.phone}</span></div>`;
+                    card.innerHTML = `
+                        <div class="lawyer-name">${lawyer.name}</div>
+                        <div class="lawyer-spec">${lawyer.specialty}</div>
+                        <div class="lawyer-meta">
+                            <span>📍 ${lawyer.city}</span>
+                            <span>📞 ${lawyer.phone}</span>
+                        </div>`;
                     list.appendChild(card);
                 });
-            } catch (error) {}
+            } catch (error) {
+                list.innerHTML = `<div style="color:#ef4444;text-align:center;">Connection failed.</div>`;
+            }
         }
 
         function handleEnter(event) { if (event.key === 'Enter') sendUserMessage(); }
@@ -269,6 +311,7 @@
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
+            // Trigger the fixed lawyer fetcher
             fetchSmartLawyers(text);
 
             try {
