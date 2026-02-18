@@ -76,7 +76,7 @@ Toggle Language: Click the Urdu / English button to switch languages instantly.
 Find a Lawyer: The sidebar will automatically update with lawyers relevant to your query (e.g., displaying Criminal defense lawyers if you ask about theft).
 
 👤 Author
-Muhammad Umair Ashraf 
+Muhammad Umair Ashraf Full Stack Developer & AI Engineer
 
 ⚠️ Disclaimer
 Qanoon AI is an informational tool and does not constitute formal legal advice. Users should consult with a qualified legal professional for official counsel.

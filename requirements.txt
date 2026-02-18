@@ -1,16 +1,22 @@
-fastapi
-uvicorn
-python-multipart
-requests
-beautifulsoup4
-pypdf2
-langchain
+# --- Web Framework & Server ---
+flask
+gunicorn
+python-dotenv
+
+# --- Google Gemini AI (New SDK) ---
+google-genai>=0.3.0
+
+# --- LangChain Ecosystem ---
 langchain-community
+langchain-huggingface
+langchain-text-splitters
+langchain-core
+
+# --- AI Memory & Embeddings ---
+# Use cpu version to avoid huge file sizes on cloud
 faiss-cpu
 sentence-transformers
-datasets
-huggingface_hub
-python-dotenv
-flask
-google-genai>=0.3.0
-gunicorn
+
+# --- Data Processing ---
+pandas
+PyPDF2
