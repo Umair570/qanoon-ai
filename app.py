@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import time
+import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 
@@ -27,43 +28,58 @@ try:
 except Exception as e:
     print(f"❌ ERROR: Groq Initialization Failed - {e}")
 
-# --- 3. EAGER LOAD RAG (Loads immediately on startup!) ---
+# --- 3. STRICT EAGER LOAD & WARMUP ---
 print("🔌 Initializing Cloud Brain on Startup...")
 rag = None
 try:
     from backend.ai.rag_engine import RAGEngine
     rag = RAGEngine()
     
-    # 🔥 WARM UP PING to wake up Hugging Face API before site goes live
-    print("🔥 Warming up Hugging Face API...")
-    try:
-        rag.embeddings.embed_query("wake up")
-        print("✅ SUCCESS: API is awake and Cloud AI Memory Fully Loaded!")
-    except Exception:
-        print("⚠️ API is sleeping and will wake up on the first user query.")
-        
+    # 🔥 STRICT BLOCKING WARMUP: Do not let the app start until HF is awake
+    print("🔥 Forcing Hugging Face API to wake up (This may take a minute)...")
+    is_awake = False
+    while not is_awake:
+        try:
+            rag.embeddings.embed_query("wake up")
+            is_awake = True
+            print("✅ SUCCESS: Hugging Face API is fully awake and ready!")
+        except Exception:
+            print("⏳ Hugging Face is still booting. Knocking again in 5 seconds...")
+            time.sleep(5)
+            
 except Exception as e:
     print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
 
+# --- 4. THE HEARTBEAT THREAD (Prevents HF from ever sleeping) ---
+def keep_brain_awake():
+    """Silently pings the HF API every 5 minutes in the background."""
+    while True:
+        time.sleep(300) # Wait 5 minutes
+        if rag:
+            try:
+                rag.embeddings.embed_query("heartbeat ping")
+                print("💓 [Heartbeat] Sent signal to keep Hugging Face awake.")
+            except Exception:
+                pass # Ignore errors in the background
+
+# Start the background heartbeat immediately
+threading.Thread(target=keep_brain_awake, daemon=True).start()
 
 app = Flask(__name__)
 
 # --- STREAM GENERATOR WITH RATE LIMIT SAFETY ---
 def generate_groq_response(prompt, max_retries=3):
-    """Streams the response instantly, handling Daily/Minute Quota limits."""
     for attempt in range(max_retries):
         try:
             for chunk in llm.stream(prompt):
                 if chunk.content:
                     yield chunk.content
-            return # Exit successfully if stream finishes
+            return 
 
         except Exception as e:
             error_msg = str(e).lower()
-            
             if '429' in error_msg or 'rate_limit' in error_msg:
                 wait_time = (attempt + 1) * 5 
-                print(f"⚠️ API Minute Limit hit. Sleeping for {wait_time}s...")
                 time.sleep(wait_time)
             else:
                 yield f"⚠️ API Error: {str(e)}"
@@ -71,8 +87,7 @@ def generate_groq_response(prompt, max_retries=3):
 
     yield (
         "<h3>⚠️ Daily Limit Reached</h3>"
-        "Qanoon AI has answered too many questions today and reached its maximum server capacity. "
-        "Please try again tomorrow when the quota resets!"
+        "Qanoon AI has reached its maximum server capacity today. Please try again tomorrow!"
     )
 
 
@@ -92,30 +107,18 @@ def consult():
     
     if rag:
         try:
-            # OPTIMIZATION: Reduced k=8 to k=3 to prevent hitting Groq token limits
+            # We removed the KeyError catch because the heartbeat guarantees it is awake!
             docs = rag.search(user_text, k=3)
             if docs:
                 context = ""
                 for doc in docs:
                     context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
-                    
-        except KeyError:
-            # CRITICAL SAFETY: If the site is inactive for hours, Hugging Face goes to sleep.
-            # This prevents the app from crashing with a 500 error when that happens.
-            def cold_start_message():
-                yield (
-                    "<h3>⚠️ Waking up Cloud Brain</h3>"
-                    "The legal model was sleeping due to inactivity. It is waking up now! "
-                    "Please wait 15 seconds and click send again."
-                )
-            return Response(stream_with_context(cold_start_message()), mimetype='text/plain')
-            
         except Exception as e:
             def generic_error_message():
                 yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the database: {str(e)}"
             return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
-    # --- SYSTEM PROMPT (CONCISE GOVERNMENT ADVISOR) ---
+    # --- SYSTEM PROMPT ---
     system_prompt = (
         "Role: You are Qanoon AI, an authoritative and professional legal advisor for Pakistani Law.\n"
         "Task: Provide a highly concise, government-style legal summary based STRICTLY on the provided text.\n\n"
@@ -152,10 +155,8 @@ def get_lawyers():
             with open(LAWYERS_DB_PATH, 'r', encoding='utf-8') as f:
                 all_lawyers = json.load(f)
         else:
-            print(f"⚠️ Warning: Database file not found at {LAWYERS_DB_PATH}")
             return jsonify([]) 
     except Exception as e:
-        print(f"❌ Error reading lawyer DB: {e}")
         return jsonify([])
 
     if not all_lawyers:
