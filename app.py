@@ -158,7 +158,7 @@ def get_lawyers():
     return jsonify(filtered_lawyers)
 
 
-if __name__ == '__main__':
-    # Force 0.0.0.0 so the container is accessible externally
-    port = int(os.environ.get("PORT", 7860))
-    app.run(host='0.0.0.0', port=port)
+import os
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
