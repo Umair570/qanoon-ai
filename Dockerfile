@@ -23,4 +23,4 @@ EXPOSE 10000
 
 # 6. Use the $PORT variable in the start command
 # Render requires binding to 0.0.0.0 and the assigned $PORT
-CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:$PORT"]
+CMD ["sh", "-c", "echo PORT=$PORT && gunicorn app:app --bind 0.0.0.0:$PORT"]
