@@ -159,4 +159,9 @@ def get_lawyers():
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # 1. Get the port from Render's environment, default to 5000 for local testing
+    # Using '0.0.0.0' is REQUIRED for Docker/Render to see the app
+    port = int(os.environ.get("PORT", 5000))
+    
+    print(f"🚀 Qanoon AI is launching on port {port}...")
+    app.run(host='0.0.0.0', port=port)
