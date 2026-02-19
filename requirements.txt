@@ -1,21 +1,21 @@
-# --- Web Framework & Server ---
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.2.2+cpu
+sentence-transformers
+langchain-huggingface
+langchain
+langchain-community
+langchain-groq
+faiss-cpu
+google-genai>=0.3.0
+langchain-google-genai
 flask
 gunicorn
 python-dotenv
-
-# --- Google Gemini AI (New SDK) ---
-google-genai>=0.3.0
-
-# --- LangChain Ecosystem ---
-langchain-community
-langchain-huggingface
-langchain-text-splitters
-langchain-core
-
-# --- AI Memory & Embeddings ---
-# Use cpu version to avoid huge file sizes on cloud
-faiss-cpu
-langchain-google-genai
-# --- Data Processing ---
-pandas
-PyPDF2
+requests
+beautifulsoup4
+pypdf2
+datasets
+huggingface_hub
+requests
+beautifulsoap4
+pypdf2

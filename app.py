@@ -3,46 +3,80 @@ import sys
 import json
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
-from google import genai  # THE NEW LIBRARY
 
-# 1. SETUP PATHS & SECURITY
+# 1. NEW: IMPORT GROQ INSTEAD OF GEMINI
+from langchain_groq import ChatGroq
+
+# Setup paths & security
 sys.path.append(os.getcwd()) 
-load_dotenv()  # This loads the key from your .env file
+load_dotenv()  
 
-api_key = os.getenv("GEMINI_API_KEY")
-if not api_key:
-    print("❌ ERROR: API Key not found! Make sure .env file exists.")
+# 2. CONFIGURE BLAZING FAST GROQ CLIENT
+groq_api_key = os.getenv("GROQ_API_KEY")
+if not groq_api_key:
+    print("❌ ERROR: GROQ_API_KEY not found in .env file.")
 
-# 2. CONFIGURE THE NEW GEMINI CLIENT
-# The new SDK uses a client instance rather than global configuration
-client = genai.Client(api_key=api_key)
+# Initialize the 8-Billion parameter Llama-3 model
+# It is incredibly fast, smart, and has massive free-tier limits
+try:
+    llm = ChatGroq(
+        temperature=0.1, 
+        model_name="llama-3.1-8b-instant", # <-- ACTIVE FAST MODEL 
+        api_key=groq_api_key
+    )
+    print("⚡ SUCCESS: Groq AI Model Ready!")
+except Exception as e:
+    print(f"❌ ERROR: Groq Initialization Failed - {e}")
+
 
 # 3. IMPORT RAG
 rag = None
 try:
-    from backend.ai.rag_engine import rag
-    print("✅ SUCCESS: AI Engine Loaded!")
+    # We import the Class, then create the instance here!
+    from backend.ai.rag_engine import RAGEngine
+    rag = RAGEngine()
+    print("✅ SUCCESS: Local AI Memory Loaded!")
 except Exception as e:
-    print(f"❌ ERROR: AI Engine Failed - {e}")
+    print(f"❌ ERROR: Local AI Memory Failed - {e}")
 
 app = Flask(__name__)
 
-# --- STREAMING GENERATOR (UPDATED FOR NEW SDK) ---
-def generate_gemini_response(prompt):
-    try:
-        # The new method syntax is 'models.generate_content_stream'
-        response = client.models.generate_content_stream(
-            model='gemini-2.5-flash', # Updated to a valid model name (gemini-2.5-flash doesn't exist yet publicly, changed to 2.0-flash or 1.5-flash is safer)
-            contents=prompt
-        )
-        for chunk in response:
-            if chunk.text:
-                yield chunk.text
-    except Exception as e:
-        yield f"Error: {str(e)}"
+# --- NEW: LIGHTNING FAST STREAM GENERATOR WITH RATE LIMIT SAFETY ---
+def generate_groq_response(prompt, max_retries=3):
+    """Streams the response instantly, handling Daily/Minute Quota limits."""
+    for attempt in range(max_retries):
+        try:
+            # Groq streaming is native to LangChain
+            for chunk in llm.stream(prompt):
+                if chunk.content:
+                    yield chunk.content
+            return # Exit successfully if the whole stream finishes
+
+        except Exception as e:
+            error_msg = str(e).lower()
+            
+            # Check if it's a Per-Minute limit (wait and retry)
+            if '429' in error_msg or 'rate_limit' in error_msg:
+                wait_time = (attempt + 1) * 5 # Wait 5s, 10s, 15s
+                print(f"⚠️ API Minute Limit hit. Sleeping for {wait_time}s...")
+                import time
+                time.sleep(wait_time)
+            else:
+                # If it's some other random error, just stop and show it
+                yield f"⚠️ API Error: {str(e)}"
+                return
+
+    # NEW: If all 3 retries fail, it means the DAILY limit is probably reached
+    yield (
+        "<h3>⚠️ Daily Limit Reached</h3>"
+        "Qanoon AI has answered too many questions today and reached its maximum server capacity. "
+        "Please try again tomorrow when the quota resets!"
+    )
+
 
 @app.route('/')
 def home(): return render_template('index.html')
+
 
 @app.route('/consult', methods=['POST'])
 def consult():
@@ -55,77 +89,74 @@ def consult():
     context = "No specific legal document found."
     
     if rag:
-        # Search more docs since Gemini handles large context easily
-        docs = rag.search(user_text, k=5)
+        docs = rag.search(user_text, k=8)
         if docs:
             context = ""
             for doc in docs:
-                context += f"\n--- LEGAL REFERENCE ---\n{doc['text']}\n"
+                # NOW the AI can see the exact Section/Title!
+                context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
 
-    # --- SYSTEM PROMPT (UNIVERSAL LAWYER LOGIC) ---
+    # --- SYSTEM PROMPT (CONCISE GOVERNMENT ADVISOR) ---
     system_prompt = (
-    "Role: Qanoon AI. Answer strictly using ONLY provided text. Be highly concise.\n"
-    "Format exactly as:\n"
-    "<h3>Main Concept</h3>[Exact definition/Section from text]\n"
-    "<h3>Punishment/Procedure</h3>[Exact penalty/steps from text]\n"
-    "<h3>Specific Forms</h3>[Variations from text]\n"
-    "Rules: NO filler phrases. NO Markdown. HTML only (<b>,<ul>,<li>,<br>).\n"
-    f"Language: {'URDU(Nastaliq)' if language_mode == 'ur' else 'ENGLISH'}."
-)
-
+        "Role: You are Qanoon AI, an authoritative and professional legal advisor for Pakistani Law.\n"
+        "Task: Provide a highly concise, government-style legal summary based STRICTLY on the provided text.\n\n"
+        "CRITICAL RULES:\n"
+        "1. MAX LENGTH: Keep the entire response under 4 sentences or 60 words to ensure rapid readability.\n"
+        "2. TONE: Speak directly and officially. NEVER use phrases like 'According to the text' or 'The provided data says'.\n"
+        "3. ACCURACY: Do not invent penalties. Use only what is provided.\n\n"
+        "Format EXACTLY with these HTML tags (No Markdown):\n"
+        "<h3>📜 Legal Overview</h3>\n"
+        "[1 clear sentence summarizing the law.]\n"
+        "<h3>⚖️ Penalties & Procedure</h3>\n"
+        "[1-2 short bullet points using <ul><li> for specific punishments or fines.]\n"
+        "<h3>📌 Official Reference</h3>\n"
+        "<b>Source:</b> [Exact title/section from the text].\n\n"
+        f"Language: {'Urdu' if language_mode == 'ur' else 'English'}."
+    )
+    
     full_prompt = f"{system_prompt}\nDATA:\n{context}\n\nQUERY: {user_text}"
 
-    return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
+    # Use the new Groq generator
+    return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
-# --- LAWYER DATABASE LOGIC (UPDATED) ---
-# We define the path globally, but we load the data FRESH inside the route.
+
+# --- LAWYER DATABASE LOGIC ---
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")
 
 @app.route('/lawyers', methods=['GET'])
 def get_lawyers():
-    # 1. Initialize empty lists to ensure no data persists from previous requests
     all_lawyers = []
     filtered_lawyers = []
-    
-    # 2. Get the category from the frontend
     category = request.args.get('category', 'general').lower().strip()
     
-    # 3. Load the database fresh from disk
     try:
         if os.path.exists(LAWYERS_DB_PATH):
             with open(LAWYERS_DB_PATH, 'r', encoding='utf-8') as f:
                 all_lawyers = json.load(f)
         else:
             print(f"⚠️ Warning: Database file not found at {LAWYERS_DB_PATH}")
-            return jsonify([]) # Return empty if file missing
+            return jsonify([]) 
     except Exception as e:
         print(f"❌ Error reading lawyer DB: {e}")
         return jsonify([])
 
-    # 4. If no lawyers found in file, return empty
     if not all_lawyers:
         return jsonify([])
 
-    # 5. Filter logic
     if category == 'general' or not category:
-        # If no specific category, return the first 10
         return jsonify(all_lawyers[:10])
     
-    # STRICT Filtering: Create a fresh list
     for lawyer in all_lawyers:
-        # Check tags safely
         lawyer_tags = [t.lower() for t in lawyer.get('tags', [])]
         lawyer_specialty = lawyer.get('specialty', '').lower()
-        
-        # Check if category matches tags OR specialty
         if category in lawyer_tags or category in lawyer_specialty:
             filtered_lawyers.append(lawyer)
     
-    # 6. Fallback: If no lawyers match the category, return a few general ones
     if not filtered_lawyers:
         return jsonify(all_lawyers[:5])
         
     return jsonify(filtered_lawyers)
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
