@@ -6,6 +6,7 @@ langchain
 langchain-community
 langchain-groq
 faiss-cpu
+numpy<2.0.0
 google-genai>=0.3.0
 langchain-google-genai
 flask
