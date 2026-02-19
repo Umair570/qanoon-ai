@@ -72,7 +72,7 @@ class RAGEngine:
         # --- PRECISION SETTING ---
         # chunk_size=1000 means high detail. We do NOT miss anything.
         print("✂️  Splitting text into high-precision chunks...")
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
         final_docs = text_splitter.split_documents(documents)
         
         total_chunks = len(final_docs)
