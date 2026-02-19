@@ -23,4 +23,4 @@ EXPOSE 10000
 
 # 6. Use the $PORT variable in the start command
 # Render requires binding to 0.0.0.0 and the assigned $PORT
-CMD ["sh", "-c", "gunicorn -w 1 -b 0.0.0.0:${PORT:-7860} --timeout 120 app:app"]
+CMD ["sh", "-c", "gunicorn -w 1 -b 0.0.0.0:${PORT:-7860} --timeout 600 --graceful-timeout 300 --preload app:app"]
