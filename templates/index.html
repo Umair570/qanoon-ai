@@ -394,6 +394,7 @@
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
+            // Trigger lawyer fetch (we might hide this later if the prompt is rejected)
             fetchSmartLawyers(text);
 
             try {
@@ -415,7 +416,26 @@
                     
                     const chunk = decoder.decode(value, { stream: true });
                     fullText += chunk;
-                    botDiv.innerHTML = fullText;
+                    
+                    // --- NEW MAGIC: Filter and Format the Stream ---
+                    let displayHTML = fullText;
+
+                    // 1. Check for the secret Rejection Flag
+                    if (displayHTML.includes("[REJECTED]")) {
+                        displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑");
+                        
+                        // Clear the lawyer list instantly so it doesn't show recommendations for abuse
+                        document.getElementById('lawyerList').innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
+                    }
+
+                    // 2. Parse Markdown Bolding (turns **text** into bright green text)
+                    displayHTML = displayHTML.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--neon-green);">$1</strong>');
+                    
+                    // 3. Handle line breaks properly so bullet points stack nicely
+                    displayHTML = displayHTML.replace(/\n/g, '<br>');
+
+                    // Output to screen
+                    botDiv.innerHTML = displayHTML;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
 
