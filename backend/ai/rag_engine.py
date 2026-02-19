@@ -19,7 +19,7 @@ class RAGEngine:
         print("🔌 Connecting to Google Embeddings...")
         # This uses Google's servers instead of your RAM
         self.embeddings = GoogleGenerativeAIEmbeddings(
-            model="models/embedding-001", 
+            model="models/gemini-embedding-001", 
             google_api_key=api_key
         )
 
