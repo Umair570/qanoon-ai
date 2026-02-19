@@ -3,7 +3,7 @@ import json
 import concurrent.futures
 from tqdm import tqdm  # Progress bar
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
+from langchain_huggingface import HuggingFaceEndpointEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
 from dotenv import load_dotenv
@@ -26,11 +26,11 @@ class RAGEngine:
             print("⚠️ WARNING: HF_TOKEN not found! Embeddings API will fail.")
 
         # API-BASED EMBEDDINGS (Saves ~300MB of RAM)
-        self.embeddings = HuggingFaceInferenceAPIEmbeddings(
-            api_key=hf_token,
-            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        # NEW CODE
+        self.embeddings = HuggingFaceEndpointEmbeddings(
+            model="sentence-transformers/all-MiniLM-L6-v2",
+            huggingfacehub_api_token=hf_token
         )
-
         self.db = None
         self.load_index()
 
