@@ -4,6 +4,7 @@ import concurrent.futures
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_google_genai import GoogleGenerativeAIEmbeddings # New lightweight importfrom langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from langchain_community.vectorstores import FAISS
 
 # --- CONFIGURATION ---
 JSON_FILE_PATH = os.path.join(os.getcwd(), "backend", "data", "processed", "legal_data_final.json")
