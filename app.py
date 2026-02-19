@@ -27,24 +27,26 @@ try:
 except Exception as e:
     print(f"❌ ERROR: Groq Initialization Failed - {e}")
 
-app = Flask(__name__)
-
-# --- NEW: LAZY LOAD RAG (This fixes the Render Timeout!) ---
+# --- 3. EAGER LOAD RAG (Loads immediately on startup!) ---
+print("🔌 Initializing Cloud Brain on Startup...")
 rag = None
-is_brain_loaded = False
+try:
+    from backend.ai.rag_engine import RAGEngine
+    rag = RAGEngine()
+    
+    # 🔥 WARM UP PING to wake up Hugging Face API before site goes live
+    print("🔥 Warming up Hugging Face API...")
+    try:
+        rag.embeddings.embed_query("wake up")
+        print("✅ SUCCESS: API is awake and Cloud AI Memory Fully Loaded!")
+    except Exception:
+        print("⚠️ API is sleeping and will wake up on the first user query.")
+        
+except Exception as e:
+    print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
 
-def get_rag():
-    global rag, is_brain_loaded
-    if not is_brain_loaded:
-        try:
-            print("🔌 Waking up Cloud Brain (This takes a moment)...")
-            from backend.ai.rag_engine import RAGEngine
-            rag = RAGEngine()
-            is_brain_loaded = True
-            print("✅ SUCCESS: Cloud AI Memory Loaded!")
-        except Exception as e:
-            print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
-    return rag
+
+app = Flask(__name__)
 
 # --- STREAM GENERATOR WITH RATE LIMIT SAFETY ---
 def generate_groq_response(prompt, max_retries=3):
@@ -88,16 +90,30 @@ def consult():
     
     context = "No specific legal document found."
     
-    # 💥 CRITICAL FIX: Load the brain ONLY when the user asks a question
-    current_rag = get_rag()
-    
-    if current_rag:
-        # OPTIMIZATION: Reduced k=8 to k=3 to prevent hitting Groq token limits
-        docs = current_rag.search(user_text, k=3)
-        if docs:
-            context = ""
-            for doc in docs:
-                context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
+    if rag:
+        try:
+            # OPTIMIZATION: Reduced k=8 to k=3 to prevent hitting Groq token limits
+            docs = rag.search(user_text, k=3)
+            if docs:
+                context = ""
+                for doc in docs:
+                    context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
+                    
+        except KeyError:
+            # CRITICAL SAFETY: If the site is inactive for hours, Hugging Face goes to sleep.
+            # This prevents the app from crashing with a 500 error when that happens.
+            def cold_start_message():
+                yield (
+                    "<h3>⚠️ Waking up Cloud Brain</h3>"
+                    "The legal model was sleeping due to inactivity. It is waking up now! "
+                    "Please wait 15 seconds and click send again."
+                )
+            return Response(stream_with_context(cold_start_message()), mimetype='text/plain')
+            
+        except Exception as e:
+            def generic_error_message():
+                yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the database: {str(e)}"
+            return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
     # --- SYSTEM PROMPT (CONCISE GOVERNMENT ADVISOR) ---
     system_prompt = (
@@ -158,6 +174,7 @@ def get_lawyers():
         return jsonify(all_lawyers[:5])
         
     return jsonify(filtered_lawyers)
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
