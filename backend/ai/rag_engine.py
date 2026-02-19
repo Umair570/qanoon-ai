@@ -3,9 +3,13 @@ import json
 import concurrent.futures
 from tqdm import tqdm  # Progress bar
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceInferenceAPIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain_core.documents import Document
+from dotenv import load_dotenv
+
+# Load environment variables (Critical for getting HF_TOKEN locally)
+load_dotenv()
 
 # --- CONFIGURATION ---
 JSON_FILE_PATH = os.path.join(os.getcwd(), "backend", "data", "processed", "legal_data_final.json")
@@ -14,13 +18,17 @@ INDEX_NAME = "faiss_index"
 
 class RAGEngine:
     def __init__(self):
-        print("🔌 Initializing Extreme-Speed Local Brain...")
+        print("🔌 Initializing Lightweight Cloud Brain (Hugging Face API)...")
         
-        # Optimized for speed: Increased batch_size to 128 for faster CPU throughput
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name="all-MiniLM-L6-v2",
-            model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True, 'batch_size': 128},
+        # Grab the token from Render Environment or local .env
+        hf_token = os.getenv("HF_TOKEN")
+        if not hf_token:
+            print("⚠️ WARNING: HF_TOKEN not found! Embeddings API will fail.")
+
+        # API-BASED EMBEDDINGS (Saves ~300MB of RAM)
+        self.embeddings = HuggingFaceInferenceAPIEmbeddings(
+            api_key=hf_token,
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
         )
 
         self.db = None

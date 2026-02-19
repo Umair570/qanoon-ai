@@ -1,72 +1,72 @@
 import os
 import sys
 import json
+import time
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 
-# 1. NEW: IMPORT GROQ INSTEAD OF GEMINI
+# 1. IMPORT GROQ
 from langchain_groq import ChatGroq
 
 # Setup paths & security
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
-# 2. CONFIGURE BLAZING FAST GROQ CLIENT
+# 2. CONFIGURE GROQ CLIENT
 groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     print("❌ ERROR: GROQ_API_KEY not found in .env file.")
 
-# Initialize the 8-Billion parameter Llama-3 model
-# It is incredibly fast, smart, and has massive free-tier limits
 try:
     llm = ChatGroq(
         temperature=0.1, 
-        model_name="llama-3.1-8b-instant", # <-- ACTIVE FAST MODEL 
+        model_name="llama-3.1-8b-instant", 
         api_key=groq_api_key
     )
     print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
     print(f"❌ ERROR: Groq Initialization Failed - {e}")
 
-
-# 3. IMPORT RAG
-rag = None
-try:
-    # We import the Class, then create the instance here!
-    from backend.ai.rag_engine import RAGEngine
-    rag = RAGEngine()
-    print("✅ SUCCESS: Local AI Memory Loaded!")
-except Exception as e:
-    print(f"❌ ERROR: Local AI Memory Failed - {e}")
-
 app = Flask(__name__)
 
-# --- NEW: LIGHTNING FAST STREAM GENERATOR WITH RATE LIMIT SAFETY ---
+# --- NEW: LAZY LOAD RAG (This fixes the Render Timeout!) ---
+rag = None
+is_brain_loaded = False
+
+def get_rag():
+    global rag, is_brain_loaded
+    if not is_brain_loaded:
+        try:
+            print("🔌 Waking up Cloud Brain (This takes a moment)...")
+            from backend.ai.rag_engine import RAGEngine
+            rag = RAGEngine()
+            is_brain_loaded = True
+            print("✅ SUCCESS: Cloud AI Memory Loaded!")
+        except Exception as e:
+            print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
+    return rag
+
+# --- STREAM GENERATOR WITH RATE LIMIT SAFETY ---
 def generate_groq_response(prompt, max_retries=3):
     """Streams the response instantly, handling Daily/Minute Quota limits."""
     for attempt in range(max_retries):
         try:
-            # Groq streaming is native to LangChain
             for chunk in llm.stream(prompt):
                 if chunk.content:
                     yield chunk.content
-            return # Exit successfully if the whole stream finishes
+            return # Exit successfully if stream finishes
 
         except Exception as e:
             error_msg = str(e).lower()
             
-            # Check if it's a Per-Minute limit (wait and retry)
             if '429' in error_msg or 'rate_limit' in error_msg:
-                wait_time = (attempt + 1) * 5 # Wait 5s, 10s, 15s
+                wait_time = (attempt + 1) * 5 
                 print(f"⚠️ API Minute Limit hit. Sleeping for {wait_time}s...")
-                import time
                 time.sleep(wait_time)
             else:
-                # If it's some other random error, just stop and show it
                 yield f"⚠️ API Error: {str(e)}"
                 return
 
-    # NEW: If all 3 retries fail, it means the DAILY limit is probably reached
     yield (
         "<h3>⚠️ Daily Limit Reached</h3>"
         "Qanoon AI has answered too many questions today and reached its maximum server capacity. "
@@ -88,12 +88,15 @@ def consult():
     
     context = "No specific legal document found."
     
-    if rag:
-        docs = rag.search(user_text, k=8)
+    # 💥 CRITICAL FIX: Load the brain ONLY when the user asks a question
+    current_rag = get_rag()
+    
+    if current_rag:
+        # OPTIMIZATION: Reduced k=8 to k=3 to prevent hitting Groq token limits
+        docs = current_rag.search(user_text, k=3)
         if docs:
             context = ""
             for doc in docs:
-                # NOW the AI can see the exact Section/Title!
                 context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
 
     # --- SYSTEM PROMPT (CONCISE GOVERNMENT ADVISOR) ---
@@ -116,7 +119,6 @@ def consult():
     
     full_prompt = f"{system_prompt}\nDATA:\n{context}\n\nQUERY: {user_text}"
 
-    # Use the new Groq generator
     return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
 
@@ -156,9 +158,6 @@ def get_lawyers():
         return jsonify(all_lawyers[:5])
         
     return jsonify(filtered_lawyers)
-
-
-import os
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))

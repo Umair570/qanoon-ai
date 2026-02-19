@@ -1,20 +1,7 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.2.2+cpu
-sentence-transformers
 langchain-huggingface
-langchain
-langchain-community
 langchain-groq
+langchain-community
 faiss-cpu
-numpy<2.0.0
-google-genai>=0.3.0
-langchain-google-genai
 flask
 gunicorn
 python-dotenv
-requests
-pypdf2
-datasets
-huggingface_hub
-requests
-pypdf2
