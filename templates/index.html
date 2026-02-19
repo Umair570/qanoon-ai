@@ -107,7 +107,7 @@
         }
         #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
 
-        /* --- NEW RESPONSIVE ADDITION STARTS HERE --- */
+        /* --- RESPONSIVE MOBILE ADDITION --- */
         @media (max-width: 768px) {
             body {
                 flex-direction: column; /* Stack top to bottom */
@@ -181,8 +181,6 @@
                 font-size: 1.2rem;
             }
         }
-        /* --- NEW RESPONSIVE ADDITION ENDS HERE --- */
-
     </style>
 </head>
 <body>
@@ -260,37 +258,31 @@
         };
 
         function toggleLanguage() {
-            // 1. Toggle Language State
             currentLang = currentLang === 'en' ? 'ur' : 'en';
             const data = CONTENT[currentLang];
             const input = document.getElementById('userInput');
             
-            // 2. Update UI Directions & Fonts
             document.body.classList.toggle('urdu-font', currentLang === 'ur');
             input.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
             input.placeholder = data.placeholder;
 
-            // 3. Update Text Elements
             document.getElementById('loading').innerText = data.loading;
             document.getElementById('lawyerHeader').innerText = data.lawyerHeader;
             document.getElementById('lawyerPlaceholder').innerText = data.lawyerPlaceholder;
             
-            // 4. RESET WELCOME MSG AND RE-ADD THE GRID CONTAINER
             const welcomeDiv = document.getElementById('welcomeMsg');
             welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
             welcomeDiv.classList.toggle('urdu-font', currentLang === 'ur');
             welcomeDiv.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
             
-            // 5. Force Re-render of Grid
             renderGrid();
         }
 
         function renderGrid() {
             const container = document.getElementById('gridContainer');
-            if (!container) return; // Safety check
+            if (!container) return; 
             container.innerHTML = "";
             
-            // Load cards based on currentLang
             CONTENT[currentLang].cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'category-card';
@@ -301,11 +293,13 @@
             });
         }
 
+        // --- THE ABORT FLAG ---
+        let isQueryRejected = false;
+
         async function fetchSmartLawyers(query) {
             const q = query.toLowerCase();
-            let category = "general"; // Default fallback
+            let category = "general"; 
 
-            // --- THE SMART DICTIONARY ---
             const KEYWORDS = {
                 'family':   ['divorce', 'khula', 'wife', 'husband', 'custody', 'maintenance', 'child', 'marriage', 'dowry', 'guardian', 'sharia'],
                 'criminal': ['murder', 'kill', 'theft', 'robbery', 'police', 'jail', 'bail', 'arrest', 'fir', 'crime', 'drug', 'weapon', 'assault', 'nab'],
@@ -330,6 +324,9 @@
                 const response = await fetch(`/lawyers?category=${category}`);
                 const lawyers = await response.json();
                 
+                // 💥 CRITICAL FIX: If the AI already rejected the prompt, abort showing lawyers!
+                if (isQueryRejected) return; 
+
                 list.innerHTML = ""; 
                 
                 if(lawyers.length === 0) { 
@@ -353,18 +350,18 @@
                     list.appendChild(card);
                 });
             } catch (error) {
-                list.innerHTML = `<div style="color:#ef4444;text-align:center;">Connection failed.</div>`;
+                if (!isQueryRejected) {
+                    list.innerHTML = `<div style="color:#ef4444;text-align:center;">Connection failed.</div>`;
+                }
             }
         }
 
         function handleEnter(event) { if (event.key === 'Enter') sendUserMessage(); }
         function sendText(text) { document.getElementById('userInput').value = text; sendUserMessage(); }
 
-        // --- NEW: ANTI-SPAM VARIABLES ---
         let isWaitingForResponse = false;
 
         async function sendUserMessage() {
-            // Anti-spam check: Ignore clicks if we are already fetching an answer
             if (isWaitingForResponse) return;
 
             const input = document.getElementById('userInput');
@@ -372,8 +369,10 @@
             const text = input.value.trim();
             if (!text) return;
 
-            // Lock UI during request
+            // Lock UI and reset rejection flag
             isWaitingForResponse = true;
+            isQueryRejected = false; 
+            
             input.disabled = true;
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.5';
@@ -394,7 +393,7 @@
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Trigger lawyer fetch (we might hide this later if the prompt is rejected)
+            // Trigger lawyer fetch in the background
             fetchSmartLawyers(text);
 
             try {
@@ -417,24 +416,24 @@
                     const chunk = decoder.decode(value, { stream: true });
                     fullText += chunk;
                     
-                    // --- NEW MAGIC: Filter and Format the Stream ---
                     let displayHTML = fullText;
 
-                    // 1. Check for the secret Rejection Flag
+                    // 1. Check for Rejection
                     if (displayHTML.includes("[REJECTED]")) {
-                        displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑");
+                        isQueryRejected = true; // Tell the lawyer function to stop!
                         
-                        // Clear the lawyer list instantly so it doesn't show recommendations for abuse
+                        // Clean up both variations just in case
+                        displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑").replace("[REJECTED]", "🛑");
+                        
                         document.getElementById('lawyerList').innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
                     }
 
-                    // 2. Parse Markdown Bolding (turns **text** into bright green text)
+                    // 2. Parse Markdown Bolding
                     displayHTML = displayHTML.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--neon-green);">$1</strong>');
                     
-                    // 3. Handle line breaks properly so bullet points stack nicely
+                    // 3. Handle line breaks
                     displayHTML = displayHTML.replace(/\n/g, '<br>');
 
-                    // Output to screen
                     botDiv.innerHTML = displayHTML;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
@@ -443,12 +442,11 @@
                 document.getElementById('loading').style.display = 'none';
                 botDiv.innerHTML = "⚠️ Error: Backend not responding.";
             } finally {
-                // Unlock UI after request finishes or fails
                 isWaitingForResponse = false;
                 input.disabled = false;
                 submitBtn.disabled = false;
                 submitBtn.style.opacity = '1';
-                input.focus(); // Bring cursor back to input automatically
+                input.focus(); 
             }
         }
 
