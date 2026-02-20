@@ -96,7 +96,7 @@ def consult():
     
     if rag:
         try:
-            docs = rag.search(user_text, k=5)
+            docs = rag.search(user_text, k=6)
             if docs:
                 context = ""
                 for doc in docs:
