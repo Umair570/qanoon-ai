@@ -93,9 +93,8 @@ def home(): return render_template('index.html')
 def consult():
     data = request.json
     user_text = data.get('text', '')
-    language_mode = data.get('lang', 'en') 
     
-    print(f"🔍 Analyzing ({language_mode}): {user_text}")
+    print(f"🔍 Analyzing: {user_text}")
     
     context = "No specific legal document found."
     
@@ -111,40 +110,23 @@ def consult():
                 yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the database: {str(e)}"
             return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
-    # --- COMPLETELY SPLIT NATIVE PROMPTS TO PREVENT AI CONFUSION ---
-    if language_mode == 'ur':
-        # Pure Urdu Instructions for Llama-3
-        system_prompt = (
-            "آپ 'قانون اے آئی' ہیں، جو پاکستان کے قانون کا ماہر اور مشیر ہے۔\n"
-            "آپ کو صرف اور صرف فراہم کردہ 'DATA' کی بنیاد پر جواب دینا ہے۔\n\n"
-            "🚨 اہم قوانین:\n"
-            "1. اگر جواب DATA میں موجود نہیں ہے، تو بالکل یہ لکھیں: '🛑 [REJECTED] معذرت، میرے پاس اس کے بارے میں مخصوص قانونی معلومات نہیں ہیں۔'\n"
-            "2. اگر سوال قانون سے متعلق نہیں ہے یا غیر اخلاقی ہے تو لکھیں: '🛑 [REJECTED] میں صرف پاکستانی قانون سے متعلق سوالات کے جوابات دے سکتا ہوں۔'\n\n"
-            "💬 جواب کا طریقہ کار:\n"
-            "- جواب انتہائی مختصر (زیادہ سے زیادہ 3 یا 4 جملے) اور آسان اردو میں دیں۔\n"
-            "- کسی بھی جملے یا بات کو دوبارہ مت دہرائیں۔\n"
-            "- سزاؤں کو نمایاں کرنے کے لیے **موٹے الفاظ** (Bold text) کا استعمال کریں۔\n"
-            "- آخر میں قانون کا حوالہ اس طرح دیں: '📖 Reference: Section [Number]'.\n"
-        )
-    else:
-        # Pure English Instructions
-        system_prompt = (
-            "You are Qanoon AI, a professional, modern legal advisor for Pakistani law.\n"
-            "You MUST answer strictly using the provided DATA.\n\n"
-            "🚨 CRITICAL RULES:\n"
-            "1. If the answer is not explicitly in the DATA, respond exactly with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
-            "2. If the query is unrelated to Pakistani law or offensive, respond exactly with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
-            "💬 FORMATTING:\n"
-            "- Answer in a natural, conversational tone. Keep it very concise (max 3-4 sentences).\n"
-            "- Use short bullet points ONLY if listing multiple penalties.\n"
-            "- Bold the actual penalty, prison time, or fine amount.\n"
-            "- NEVER repeat the same sentence twice.\n"
-            "- End with a clean citation on a new line: '📖 Reference: Section [Number]'.\n"
-        )
+    # --- PURE ENGLISH PROMPT ---
+    system_prompt = (
+        "You are Qanoon AI, a professional, modern legal advisor for Pakistani law.\n"
+        "You MUST answer strictly using the provided DATA.\n\n"
+        "🚨 CRITICAL RULES:\n"
+        "1. If the answer is not explicitly in the DATA, respond exactly with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
+        "2. If the query is unrelated to Pakistani law or offensive, respond exactly with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
+        "💬 FORMATTING:\n"
+        "- Answer in a natural, conversational tone. Keep it very concise (max 3-4 sentences).\n"
+        "- Use short bullet points ONLY if listing multiple penalties.\n"
+        "- Bold the actual penalty, prison time, or fine amount.\n"
+        "- NEVER repeat the same sentence twice.\n"
+        "- End with a clean citation on a new line: '📖 Reference: Section [Number]'.\n"
+    )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
 
-    # 💥 RESTORED THE MISSING RETURN STATEMENT HERE 💥
     return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")

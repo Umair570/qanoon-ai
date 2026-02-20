@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Qanoon AI - Pakistan</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-dark: #09090b;
@@ -25,8 +25,6 @@
             overflow: hidden; 
         }
 
-        .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; line-height: 2 !important; }
-
         .sidebar { width: 340px; background: var(--panel-bg); backdrop-filter: blur(12px); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
         .brand { font-size: 1.8rem; font-weight: 700; color: var(--neon-green); margin-bottom: 25px; letter-spacing: -1px; }
 
@@ -40,22 +38,7 @@
 
         .main { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #11231c 0%, #09090b 40%); position: relative; }
         
-        .top-bar { position: absolute; top: 20px; right: 20px; z-index: 10; }
-        .lang-btn {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid var(--border);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            transition: 0.3s;
-            min-width: 150px;
-            text-align: center;
-        }
-        .lang-btn:hover { background: var(--neon-green); color: black; border-color: var(--neon-green); }
-
-        .chat-box { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-top: 40px; }
+        .chat-box { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
         .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.6; font-size: 1rem; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.bot { background: #18181b; border: 1px solid var(--border); color: #d4d4d8; }
@@ -91,9 +74,7 @@
             .brand { font-size: 1.5rem; margin-bottom: 0; }
             .lawyer-header, .lawyer-list { display: none; }
             .main { width: 100%; height: calc(100vh - 80px); }
-            .chat-box { padding: 15px; margin-top: 60px; }
-            .top-bar { top: 15px; right: 15px; }
-            .lang-btn { padding: 6px 12px; font-size: 0.8rem; min-width: 120px; }
+            .chat-box { padding: 15px; margin-top: 10px; }
             .msg { max-width: 85%; font-size: 0.95rem; padding: 12px 16px; }
             .input-area { padding: 15px; gap: 10px; }
             input { padding: 12px 15px; font-size: 0.95rem; }
@@ -108,15 +89,11 @@
         
         <div class="lawyer-header" id="lawyerHeader">Recommended Lawyers</div>
         <div class="lawyer-list" id="lawyerList">
-            <div style="text-align:center; color:#52525b; margin-top:20px;" id="lawyerPlaceholder">Ask a question</div>
+            <div style="text-align:center; color:#52525b; margin-top:20px;" id="lawyerPlaceholder">Ask a question.</div>
         </div>
     </div>
 
     <div class="main">
-        <div class="top-bar">
-            <button class="lang-btn" onclick="toggleLanguage()">🌐 Switch to Urdu</button>
-        </div>
-
         <div class="chat-box" id="chatBox">
             <div class="msg bot" id="welcomeMsg">
                 <strong>Assalam-o-Alaikum!</strong> 👋<br>
@@ -137,80 +114,18 @@
     </div>
 
     <script>
-        let currentLang = 'en';
+        // Cleaned up, English-only cards array
+        const cards = [
+            { title: "What is the punishment for theft?", query: "What is the punishment for theft under PPC?" },
+            { title: "How to file for divorce?", query: "How to file for divorce in Pakistan?" },
+            { title: "Is hacking a crime?", query: "Is hacking a crime in Pakistan?" },
+            { title: "What makes a contract valid?", query: "What makes a contract valid?" },
+            { title: "How to become a tax filer?", query: "How to become a tax filer in Pakistan?" }
+        ];
 
-        const CONTENT = {
-            en: {
-                placeholder: "Type your legal scenario here...",
-                loading: "Analyzing Legal Documents...",
-                welcome: "<strong>Assalam-o-Alaikum!</strong> 👋<br>I am your legal assistant. How may I help you?<br>Sample Questions:",
-                lawyerHeader: "Recommended Lawyers",
-                lawyerPlaceholder: "Ask a question.",
-                cards: [
-                    { title: "What is the punishment for theft?", query: "What is the punishment for theft under PPC?" },
-                    { title: "How to file for divorce?", query: "How to file for divorce in Pakistan?" },
-                    { title: "Is hacking a crime?", query: "Is hacking a crime in Pakistan?" },
-                    { title: "What makes a contract valid?", query: "What makes a contract valid?" },
-                    { title: "How to become a tax filer?", query: "How to become a tax filer in Pakistan?" }
-                ]
-            },
-            ur: {
-                placeholder: "اپنا قانونی سوال یہاں لکھیں...",
-                loading: "✨ دستاویزات کی جانچ پڑتال ہو رہی ہے...",
-                welcome: "<strong>السلام علیکم!</strong> 👋<br>میں آپ کا قانونی مشیر ہوں۔<br>ایک سوال منتخب کریں:",
-                lawyerHeader: "تصدیق شدہ وکلاء",
-                lawyerPlaceholder: "وکیل تلاش کرنے کے لیے سوال پوچھیں۔",
-                cards: [
-                    { title: "چوری کی سزا کیا ہے؟", query: "چوری کی سزا کیا ہے؟" },
-                    { title: "طلاق کا طریقہ کار کیا ہے؟", query: "طلاق کا طریقہ کار کیا ہے؟" },
-                    { title: "کیا ہیکنگ ایک جرم ہے؟", query: "کیا ہیکنگ ایک جرم ہے؟" },
-                    { title: "معاہدہ کیسے قانونی ہوتا ہے؟", query: "معاہدہ کیسے قانونی ہوتا ہے؟" },
-                    { title: "ٹیکس فائلر کیسے بنیں؟", query: "ٹیکس فائلر کیسے بنیں؟" }
-                ]
-            }
-        };
-
-        window.onload = async function() {
+        window.onload = function() {
             renderGrid();
         };
-
-        function toggleLanguage() {
-            currentLang = currentLang === 'en' ? 'ur' : 'en';
-            const data = CONTENT[currentLang];
-            const input = document.getElementById('userInput');
-            
-            // 1. Update Layout
-            document.body.classList.toggle('urdu-font', currentLang === 'ur');
-            input.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
-            input.placeholder = data.placeholder;
-
-            // 2. Safely Update Elements (Prevents the crash!)
-            const loadingEl = document.getElementById('loading');
-            if (loadingEl) loadingEl.innerText = data.loading;
-
-            const lawyerHeaderEl = document.getElementById('lawyerHeader');
-            if (lawyerHeaderEl) lawyerHeaderEl.innerText = data.lawyerHeader;
-
-            const lawyerPlaceholderEl = document.getElementById('lawyerPlaceholder');
-            if (lawyerPlaceholderEl) lawyerPlaceholderEl.innerText = data.lawyerPlaceholder;
-            
-            const langBtn = document.querySelector('.lang-btn');
-            if (langBtn) langBtn.innerText = currentLang === 'en' ? "🌐 Switch to Urdu" : "🌐 Switch to English";
-
-            // 3. Rebuild Welcome Screen
-            const welcomeDiv = document.getElementById('welcomeMsg');
-            if (welcomeDiv) {
-                welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
-                if (currentLang === 'ur') {
-                    welcomeDiv.classList.add('urdu-font');
-                    welcomeDiv.dir = 'rtl';
-                } else {
-                    welcomeDiv.classList.remove('urdu-font');
-                    welcomeDiv.dir = 'ltr';
-                }
-                renderGrid();
-            }
-        }
 
         function renderGrid() {
             const container = document.getElementById('gridContainer');
@@ -218,15 +133,11 @@
             
             container.innerHTML = "";
             
-            CONTENT[currentLang].cards.forEach(card => {
+            cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'category-card';
                 div.onclick = () => sendText(card.query);
-                
-                const arrow = currentLang === 'ur' ? '⮜' : '➤'; 
-                div.innerHTML = `<span class="cat-title">${arrow} ${card.title}</span>`;
-                if (currentLang === 'ur') div.style.textAlign = 'right';
-                
+                div.innerHTML = `<span class="cat-title">➤ ${card.title}</span>`;
                 container.appendChild(div);
             });
         }
@@ -322,10 +233,6 @@
             const chatBox = document.getElementById('chatBox');
             const botDiv = document.createElement('div');
             botDiv.className = 'msg bot';
-            if (currentLang === 'ur') {
-                botDiv.classList.add('urdu-font');
-                botDiv.dir = 'rtl';
-            }
             botDiv.innerHTML = ""; 
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -336,7 +243,7 @@
                 const response = await fetch('/consult', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text, lang: currentLang })
+                    body: JSON.stringify({ text: text })
                 });
 
                 document.getElementById('loading').style.display = 'none';
@@ -354,7 +261,6 @@
                     
                     let displayHTML = fullText;
 
-                    // 💥 CRITICAL FIX: Robust detection checks actual sentences, not just bracket tags!
                     const rejectionTriggers = [
                         "[REJECTED]",
                         "I can only answer questions related to Pakistani law",
@@ -367,10 +273,8 @@
                     if (isFlagged) {
                         isQueryRejected = true; 
                         
-                        // Clean up brackets if the AI happened to use them
                         displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑").replace("[REJECTED]", "🛑");
                         
-                        // Overwrite lawyers list immediately
                         const lList = document.getElementById('lawyerList');
                         if (lList) {
                             lList.innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
@@ -400,10 +304,6 @@
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = `msg ${sender}`;
-            if (currentLang === 'ur' || /[\u0600-\u06FF]/.test(text)) {
-                div.classList.add('urdu-font');
-                div.dir = 'rtl';
-            }
             div.innerHTML = text.replace(/\n/g, '<br>');
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
