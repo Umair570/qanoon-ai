@@ -25,10 +25,8 @@
             overflow: hidden; 
         }
 
-        /* URDU FONT CLASS */
         .urdu-font { font-family: 'Noto Nastaliq Urdu', serif; line-height: 2 !important; }
 
-        /* SIDEBAR */
         .sidebar { width: 340px; background: var(--panel-bg); backdrop-filter: blur(12px); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
         .brand { font-size: 1.8rem; font-weight: 700; color: var(--neon-green); margin-bottom: 25px; letter-spacing: -1px; }
 
@@ -40,10 +38,8 @@
         .lawyer-spec { font-size: 0.8rem; color: var(--neon-green); }
         .lawyer-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; display: flex; justify-content: space-between; }
 
-        /* MAIN AREA */
         .main { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #11231c 0%, #09090b 40%); position: relative; }
         
-        /* LANGUAGE TOGGLE */
         .top-bar { position: absolute; top: 20px; right: 20px; z-index: 10; }
         .lang-btn {
             background: rgba(255,255,255,0.1);
@@ -78,108 +74,30 @@
             font-size: 0.95rem;
             color: var(--text-main); 
         }
-        .category-card:hover { 
-            color: var(--neon-green); 
-            transform: translateX(10px); 
-        }
+        .category-card:hover { color: var(--neon-green); transform: translateX(10px); }
         .cat-title { font-weight: 400; } 
 
-        .input-area { 
-            padding: 20px 30px 10px 30px; 
-            background: var(--bg-dark); 
-            border-top: 1px solid var(--border); 
-            display: flex; 
-            gap: 15px; 
-        }
+        .input-area { padding: 20px 30px 10px 30px; background: var(--bg-dark); border-top: 1px solid var(--border); display: flex; gap: 15px; }
         input { flex: 1; background: #121214; border: 1px solid var(--border); color: white; padding: 18px 25px; border-radius: 12px; outline: none; font-size: 1rem; }
         input:focus { border-color: var(--neon-green); box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
         button { background: var(--neon-green); color: black; border: none; width: 60px; border-radius: 12px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; }
         
-        .footer { 
-            width: 100%; 
-            text-align: center; 
-            font-size: 0.9rem; 
-            color: #71717a; 
-            font-weight: 700; 
-            letter-spacing: 0.5px;
-            padding-bottom: 15px; 
-            padding-top: 5px;
-        }
+        .footer { width: 100%; text-align: center; font-size: 0.9rem; color: #71717a; font-weight: 700; letter-spacing: 0.5px; padding-bottom: 15px; padding-top: 5px; }
         #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
 
-        /* --- RESPONSIVE MOBILE ADDITION --- */
         @media (max-width: 768px) {
-            body {
-                flex-direction: column; /* Stack top to bottom */
-            }
-
-            /* Convert sidebar to a small top header on mobile */
-            .sidebar {
-                width: 100%;
-                height: 80px;
-                padding: 15px 20px;
-                border-right: none;
-                border-bottom: 1px solid var(--border);
-                box-sizing: border-box;
-                flex-direction: row;
-                align-items: center;
-                justify-content: flex-start;
-                z-index: 20;
-            }
-
-            .brand {
-                font-size: 1.5rem;
-                margin-bottom: 0;
-            }
-
-            /* Hide lawyer list on mobile to save screen space for the chat */
-            .lawyer-header, .lawyer-list {
-                display: none;
-            }
-
-            /* Ensure main area takes the rest of the height */
-            .main {
-                width: 100%;
-                height: calc(100vh - 80px);
-            }
-
-            /* Adjust Chat Box Padding & Margins */
-            .chat-box {
-                padding: 15px;
-                margin-top: 60px; /* Make room for the language button */
-            }
-
-            /* Adjust Language Button for mobile */
-            .top-bar {
-                top: 15px;
-                right: 15px;
-            }
-            .lang-btn {
-                padding: 6px 12px;
-                font-size: 0.8rem;
-                min-width: 120px;
-            }
-
-            /* Widen message bubbles for small screens */
-            .msg {
-                max-width: 85%;
-                font-size: 0.95rem;
-                padding: 12px 16px;
-            }
-
-            /* Adjust Input Area */
-            .input-area {
-                padding: 15px;
-                gap: 10px;
-            }
-            input {
-                padding: 12px 15px;
-                font-size: 0.95rem;
-            }
-            button {
-                width: 50px;
-                font-size: 1.2rem;
-            }
+            body { flex-direction: column; }
+            .sidebar { width: 100%; height: 80px; padding: 15px 20px; border-right: none; border-bottom: 1px solid var(--border); box-sizing: border-box; flex-direction: row; align-items: center; justify-content: flex-start; z-index: 20; }
+            .brand { font-size: 1.5rem; margin-bottom: 0; }
+            .lawyer-header, .lawyer-list { display: none; }
+            .main { width: 100%; height: calc(100vh - 80px); }
+            .chat-box { padding: 15px; margin-top: 60px; }
+            .top-bar { top: 15px; right: 15px; }
+            .lang-btn { padding: 6px 12px; font-size: 0.8rem; min-width: 120px; }
+            .msg { max-width: 85%; font-size: 0.95rem; padding: 12px 16px; }
+            .input-area { padding: 15px; gap: 10px; }
+            input { padding: 12px 15px; font-size: 0.95rem; }
+            button { width: 50px; font-size: 1.2rem; }
         }
     </style>
 </head>
@@ -221,7 +139,6 @@
     <script>
         let currentLang = 'en';
 
-        // DEFINING CONTENT DATA CAREFULLY
         const CONTENT = {
             en: {
                 placeholder: "Type your legal scenario here...",
@@ -262,21 +179,25 @@
             const data = CONTENT[currentLang];
             const input = document.getElementById('userInput');
             
-            // 1. Update Input Field direction & placeholder
+            // 1. Update Layout
             document.body.classList.toggle('urdu-font', currentLang === 'ur');
             input.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
             input.placeholder = data.placeholder;
 
-            // 2. Update Static Texts
-            document.getElementById('loading').innerText = data.loading;
-            document.getElementById('lawyerHeader').innerText = data.lawyerHeader;
-            document.getElementById('lawyerPlaceholder').innerText = data.lawyerPlaceholder;
-            
-            // 3. Update the Button Text so the user knows what is active
-            const langBtn = document.querySelector('.lang-btn');
-            langBtn.innerText = currentLang === 'en' ? "🌐 Switch to Urdu" : "🌐 Switch to English";
+            // 2. Safely Update Elements (Prevents the crash!)
+            const loadingEl = document.getElementById('loading');
+            if (loadingEl) loadingEl.innerText = data.loading;
 
-            // 4. Safely rebuild the Welcome Message and Grid container
+            const lawyerHeaderEl = document.getElementById('lawyerHeader');
+            if (lawyerHeaderEl) lawyerHeaderEl.innerText = data.lawyerHeader;
+
+            const lawyerPlaceholderEl = document.getElementById('lawyerPlaceholder');
+            if (lawyerPlaceholderEl) lawyerPlaceholderEl.innerText = data.lawyerPlaceholder;
+            
+            const langBtn = document.querySelector('.lang-btn');
+            if (langBtn) langBtn.innerText = currentLang === 'en' ? "🌐 Switch to Urdu" : "🌐 Switch to English";
+
+            // 3. Rebuild Welcome Screen
             const welcomeDiv = document.getElementById('welcomeMsg');
             if (welcomeDiv) {
                 welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
@@ -287,7 +208,6 @@
                     welcomeDiv.classList.remove('urdu-font');
                     welcomeDiv.dir = 'ltr';
                 }
-                // 5. Force the grid to redraw immediately
                 renderGrid();
             }
         }
@@ -296,16 +216,13 @@
             const container = document.getElementById('gridContainer');
             if (!container) return; 
             
-            // Wipe existing cards
             container.innerHTML = "";
             
-            // Rebuild cards dynamically
             CONTENT[currentLang].cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'category-card';
                 div.onclick = () => sendText(card.query);
                 
-                // Ensure the arrow flips correctly for RTL Urdu
                 const arrow = currentLang === 'ur' ? '⮜' : '➤'; 
                 div.innerHTML = `<span class="cat-title">${arrow} ${card.title}</span>`;
                 if (currentLang === 'ur') div.style.textAlign = 'right';
@@ -314,7 +231,6 @@
             });
         }
 
-        // --- THE ABORT FLAG ---
         let isQueryRejected = false;
 
         async function fetchSmartLawyers(query) {
@@ -339,13 +255,14 @@
             }
 
             const list = document.getElementById('lawyerList');
+            if (!list) return;
+            
             list.innerHTML = '<div style="text-align:center; color:#52525b; margin-top:20px;">Finding experts...</div>'; 
 
             try {
                 const response = await fetch(`/lawyers?category=${category}`);
                 const lawyers = await response.json();
                 
-                // 💥 CRITICAL FIX: If the AI already rejected the prompt, abort showing lawyers!
                 if (isQueryRejected) return; 
 
                 list.innerHTML = ""; 
@@ -390,7 +307,6 @@
             const text = input.value.trim();
             if (!text) return;
 
-            // Lock UI and reset rejection flag
             isWaitingForResponse = true;
             isQueryRejected = false; 
             
@@ -414,7 +330,6 @@
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
-            // Trigger lawyer fetch in the background
             fetchSmartLawyers(text);
 
             try {
@@ -439,20 +354,30 @@
                     
                     let displayHTML = fullText;
 
-                    // 1. Check for Rejection
-                    if (displayHTML.includes("[REJECTED]")) {
-                        isQueryRejected = true; // Tell the lawyer function to stop!
+                    // 💥 CRITICAL FIX: Robust detection checks actual sentences, not just bracket tags!
+                    const rejectionTriggers = [
+                        "[REJECTED]",
+                        "I can only answer questions related to Pakistani law",
+                        "I do not have specific information regarding this",
+                        "professional legal assistant"
+                    ];
+                    
+                    const isFlagged = rejectionTriggers.some(trigger => displayHTML.includes(trigger));
+
+                    if (isFlagged) {
+                        isQueryRejected = true; 
                         
-                        // Clean up both variations just in case
+                        // Clean up brackets if the AI happened to use them
                         displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑").replace("[REJECTED]", "🛑");
                         
-                        document.getElementById('lawyerList').innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
+                        // Overwrite lawyers list immediately
+                        const lList = document.getElementById('lawyerList');
+                        if (lList) {
+                            lList.innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
+                        }
                     }
 
-                    // 2. Parse Markdown Bolding
                     displayHTML = displayHTML.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--neon-green);">$1</strong>');
-                    
-                    // 3. Handle line breaks
                     displayHTML = displayHTML.replace(/\n/g, '<br>');
 
                     botDiv.innerHTML = displayHTML;
