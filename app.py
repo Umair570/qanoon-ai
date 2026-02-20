@@ -17,10 +17,9 @@ if not groq_api_key:
 
 try:
     llm = ChatGroq(
-        temperature=0.2, # Lowered slightly for accurate, factual responses
+        temperature=0.2, # Low temperature keeps it analytical and factual
         model_name="llama-3.1-8b-instant", 
         api_key=groq_api_key
-        # 💥 max_tokens and model_kwargs penalties have been completely removed!
     )
     print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
@@ -96,7 +95,8 @@ def consult():
     
     if rag:
         try:
-            docs = rag.search(user_text, k=6)
+            # Reverted to k=5 to keep the context clean and prevent noise confusion
+            docs = rag.search(user_text, k=5)
             if docs:
                 context = ""
                 for doc in docs:
@@ -106,19 +106,19 @@ def consult():
                 yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the database: {str(e)}"
             return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
-    # --- PURE ENGLISH PROMPT (BALANCED & CONFIDENT) ---
+    # --- THE STRICT RAG (ANTI-HALLUCINATION) PROMPT ---
     system_prompt = (
-        "You are Qanoon AI, a professional and confident legal advisor for Pakistani law.\n"
-        "You MUST base your answers ONLY on the provided DATA.\n\n"
-        "🚨 GUARDRAILS:\n"
-        "1. If the DATA does not contain enough relevant information to answer the query, respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.' Do NOT guess or provide partial advice.\n"
-        "2. If the query contains profanity or is completely unrelated to Pakistani law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n"
-        "3. Speak directly to the user. NEVER use phrases like 'The provided data does not mention' or 'According to the text'. Just state the facts confidently.\n\n"
+        "You are Qanoon AI, an expert legal advisor for Pakistani law.\n"
+        "You MUST base your answer ENTIRELY on the provided DATA block below. You are strictly forbidden from using outside knowledge to guess an answer.\n\n"
+        "🚨 STRICT RAG RULES:\n"
+        "1. If the provided DATA contains information relevant to the user's query, answer it confidently. Do NOT use phrases like 'According to the data' or 'The provided text says'. Act like a legal expert stating facts.\n"
+        "2. If the provided DATA does NOT contain the answer, you MUST NOT hallucinate or guess. You must respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
+        "3. If the query is abusive, offensive, or completely unrelated to law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
         "💬 FORMATTING:\n"
-        "- Answer in a natural, conversational tone. Keep it concise (max 3-4 sentences).\n"
-        "- Use short bullet points if listing multiple rules or conditions.\n"
-        "- Bold the actual penalty, prison time, or fine amount.\n"
-        "- End with a clean citation on a new line: '📖 Reference: Section [Number]'.\n"
+        "- Answer concisely in a natural, conversational tone (max 3-4 sentences).\n"
+        "- Use short bullet points if there are multiple rules or penalties to list.\n"
+        "- **Bold** the actual penalties, prison times, or fine amounts.\n"
+        "- If a specific Section is mentioned in the DATA, end your response on a new line with: '📖 Reference: Section [Number]'.\n"
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
