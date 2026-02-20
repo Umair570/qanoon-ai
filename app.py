@@ -108,7 +108,7 @@ def consult():
     if rag:
         try:
             # We removed the KeyError catch because the heartbeat guarantees it is awake!
-            docs = rag.search(user_text, k=3)
+            docs = rag.search(user_text, k=5)
             if docs:
                 context = ""
                 for doc in docs:
