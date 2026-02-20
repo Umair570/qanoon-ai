@@ -196,7 +196,7 @@
 
     <div class="main">
         <div class="top-bar">
-            <button class="lang-btn" onclick="toggleLanguage()">Urdu / English</button>
+            <button class="lang-btn" onclick="toggleLanguage()">🌐 Switch to Urdu</button>
         </div>
 
         <div class="chat-box" id="chatBox">
@@ -262,33 +262,54 @@
             const data = CONTENT[currentLang];
             const input = document.getElementById('userInput');
             
+            // 1. Update Input Field direction & placeholder
             document.body.classList.toggle('urdu-font', currentLang === 'ur');
             input.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
             input.placeholder = data.placeholder;
 
+            // 2. Update Static Texts
             document.getElementById('loading').innerText = data.loading;
             document.getElementById('lawyerHeader').innerText = data.lawyerHeader;
             document.getElementById('lawyerPlaceholder').innerText = data.lawyerPlaceholder;
             
+            // 3. Update the Button Text so the user knows what is active
+            const langBtn = document.querySelector('.lang-btn');
+            langBtn.innerText = currentLang === 'en' ? "🌐 Switch to Urdu" : "🌐 Switch to English";
+
+            // 4. Safely rebuild the Welcome Message and Grid container
             const welcomeDiv = document.getElementById('welcomeMsg');
-            welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
-            welcomeDiv.classList.toggle('urdu-font', currentLang === 'ur');
-            welcomeDiv.dir = currentLang === 'ur' ? 'rtl' : 'ltr';
-            
-            renderGrid();
+            if (welcomeDiv) {
+                welcomeDiv.innerHTML = data.welcome + `<div class="grid-container" id="gridContainer"></div>`;
+                if (currentLang === 'ur') {
+                    welcomeDiv.classList.add('urdu-font');
+                    welcomeDiv.dir = 'rtl';
+                } else {
+                    welcomeDiv.classList.remove('urdu-font');
+                    welcomeDiv.dir = 'ltr';
+                }
+                // 5. Force the grid to redraw immediately
+                renderGrid();
+            }
         }
 
         function renderGrid() {
             const container = document.getElementById('gridContainer');
             if (!container) return; 
+            
+            // Wipe existing cards
             container.innerHTML = "";
             
+            // Rebuild cards dynamically
             CONTENT[currentLang].cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'category-card';
                 div.onclick = () => sendText(card.query);
-                div.innerHTML = `<span class="cat-title">➤ ${card.title}</span>`;
+                
+                // Ensure the arrow flips correctly for RTL Urdu
+                const arrow = currentLang === 'ur' ? '⮜' : '➤'; 
+                div.innerHTML = `<span class="cat-title">${arrow} ${card.title}</span>`;
                 if (currentLang === 'ur') div.style.textAlign = 'right';
+                
                 container.appendChild(div);
             });
         }
