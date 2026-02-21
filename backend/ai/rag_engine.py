@@ -89,7 +89,7 @@ class RAGEngine:
             documents = [doc for doc in results if doc]
 
         print("✂️  Splitting into chunks (1000 size)...")
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         final_docs = text_splitter.split_documents(documents)
         
         total_chunks = len(final_docs)
