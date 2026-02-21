@@ -13,7 +13,6 @@ langchain-google-genai
 langchain-huggingface
 langchain-pinecone
 langchain-text-splitters
-langchain-globals
 gunicorn
 
 # Data Processing
