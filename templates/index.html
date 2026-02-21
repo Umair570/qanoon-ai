@@ -325,7 +325,7 @@
                     fullText += chunk;
                     
                     let displayHTML = fullText;
-                    const rejectionTriggers = ["[REJECTED]", "Pakistani law", "OFF-TOPIC"];
+                    const rejectionTriggers = ["[REJECTED]", "[OFF-TOPIC]", "[DATA MISSING]"];
                     const isFlagged = rejectionTriggers.some(trigger => displayHTML.includes(trigger));
 
                     if (isFlagged) {
