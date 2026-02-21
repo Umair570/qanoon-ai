@@ -5,31 +5,30 @@ import time
 import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
 
-from langchain_groq import ChatGroq 
 
 # Ensure local imports work correctly
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
-# --- API KEYS & CONFIG ---
-groq_api_key = os.getenv("GROQ_API_KEY")
+gemini_api_key = os.getenv("GEMINI_API_KEY")
 
-if not groq_api_key:
-    print("❌ ERROR: GROQ_API_KEY not found in environment.")
+if not gemini_api_key:
+    print("❌ ERROR: GEMINI_API_KEY not found in environment.")
 
-# Initialize LLM with Groq
+# Initialize LLM with Google Gemini
 try:
-    llm = ChatGroq(
-        model_name="llama3-70b-8192", 
-        temperature=0.0,  
-        api_key=groq_api_key,
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash", # Using Google's fastest model
+        temperature=0.0,  # Keeps answers factual
+        api_key=gemini_api_key,
         max_tokens=1024,
-        max_retries=1 
+        max_retries=1 # Fails fast if rate limits are hit
     )
-    print("⚡ SUCCESS: Groq AI Model Ready!")
+    print("⚡ SUCCESS: Gemini AI Model Ready!")
 except Exception as e:
-    print(f"❌ ERROR: Groq Initialization Failed - {e}")
+    print(f"❌ ERROR: Gemini Initialization Failed - {e}")
 
 rag = None
 try:
