@@ -16,7 +16,7 @@
             --text-muted: #a1a1aa;
         }
         body { 
-            font-family: 'Outfit', 'Noto Nastaliq Urdu', sans-serif; 
+            font-family: 'Outfit', sans-serif; 
             background-color: var(--bg-dark); 
             color: var(--text-main); 
             margin: 0; 
@@ -44,12 +44,9 @@
             align-items: center;
             justify-content: center;
             min-width: 80px;
+            font-family: 'Outfit', sans-serif;
         }
-        .lang-btn:hover { 
-            background: var(--neon-green); 
-            color: black; 
-            box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
-        }
+        .lang-btn:hover { background: var(--neon-green); color: black; box-shadow: 0 0 15px rgba(34, 197, 94, 0.4); }
 
         .lawyer-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         .lawyer-list { flex: 1; overflow-y: auto; }
@@ -64,22 +61,14 @@
         .chat-box { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
         .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.8; font-size: 1rem; animation: slideUp 0.3s ease; position: relative; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Flexbox handles RTL automatically. Do not manually override these in .rtl mode! */
         .msg.bot { background: #18181b; border: 1px solid var(--border); color: #d4d4d8; align-self: flex-start; }
         .msg.user { align-self: flex-end; background: var(--neon-green); color: black; font-weight: 500; }
 
         .grid-container { display: flex; flex-direction: column; gap: 8px; margin-top: 20px; }
         
-        .category-card { 
-            background: transparent; 
-            border: none; 
-            padding: 8px 12px; 
-            border-radius: 8px; 
-            cursor: pointer; 
-            transition: 0.2s; 
-            text-align: inherit;
-            font-size: 0.95rem;
-            color: var(--text-main); 
-        }
+        .category-card { background: transparent; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; text-align: inherit; font-size: 0.95rem; color: var(--text-main); }
         .category-card:hover { color: var(--neon-green); transform: translateX(10px); }
         .cat-title { font-weight: 400; } 
 
@@ -91,13 +80,12 @@
         .footer { width: 100%; text-align: center; font-size: 0.9rem; color: #71717a; font-weight: 700; letter-spacing: 0.5px; padding-bottom: 15px; padding-top: 5px; }
         #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
 
-        /* RTL Class - Enhanced for global flip */
-        .rtl { direction: rtl !important; text-align: right !important; }
+        /* THE CLEAN RTL FIX */
+        .rtl { direction: rtl !important; font-family: 'Noto Nastaliq Urdu', serif; }
         .rtl .sidebar { border-right: none; border-left: 1px solid var(--border); }
-        .rtl .msg.user { align-self: flex-start; }
-        .rtl .msg.bot { align-self: flex-end; font-family: 'Noto Nastaliq Urdu', serif; line-height: 2.2; }
         .rtl .category-card:hover { transform: translateX(-10px); }
         .rtl .lawyer-meta { flex-direction: row-reverse; }
+        .rtl input { font-family: 'Noto Nastaliq Urdu', serif; }
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -171,14 +159,15 @@
                 ]
             },
             'ur': {
-                welcome: '<strong>اسلام علیکم!</strong> 👋<br>میں آپ کا قانونی معاون ہوں۔ میں آپ کی کیا مدد کر سکتا ہوں؟<br>نمونہ سوالات:',
+                // Fixed punctuation grouping so it stays on the right side of the text in RTL
+                welcome: '<span dir="rtl"><strong>السلام علیکم!</strong> 👋<br>میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟<br>نمونہ سوالات:</span>',
                 placeholder: 'اپنا قانونی مسئلہ یہاں لکھیں...',
                 loading: 'قانونی دستاویزات کا تجزیہ کیا جا رہا ہے...',
                 lawyerHeader: 'تجویز کردہ وکلاء',
                 lawyerPlace: 'سوال پوچھیں۔',
                 queryRejected: 'سوال مسترد کر دیا گیا۔<br>وکلاء دستیاب نہیں ہیں۔',
                 finding: 'ماہرین تلاش کر رہے ہیں...',
-                btn: 'بھیجیں',
+                btn: '➤',
                 cards: [
                     { title: "چوری کی سزا کیا ہے؟", query: "پاکستان میں چوری کی سزا کیا ہے؟" },
                     { title: "طلاق کا طریقہ کار کیا ہے؟", query: "پاکستان میں طلاق فائل کرنے کا طریقہ کیا ہے؟" },
@@ -206,13 +195,11 @@
             document.getElementById('loading').innerText = t.loading;
             document.getElementById('lawyerHeader').innerText = t.lawyerHeader;
             
-            // Protect lawyer placeholder from null error if a search has already run
             const p = document.getElementById('lawyerPlaceholder');
             if(p) p.innerText = t.lawyerPlace;
             
             document.getElementById('sendBtn').innerText = t.btn;
 
-            // Apply RTL to the top-level body to force the entire layout to shift
             const body = document.getElementById('mainBody');
 
             if(currentLang === 'ur') {
@@ -313,8 +300,6 @@
             const chatBox = document.getElementById('chatBox');
             const botDiv = document.createElement('div');
             botDiv.className = 'msg bot';
-            // Only attach RTL to new bot messages if currently in Urdu mode
-            if(currentLang === 'ur') botDiv.classList.add('rtl');
             botDiv.innerHTML = "..."; 
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
@@ -371,7 +356,6 @@
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = `msg ${sender}`;
-            if(currentLang === 'ur') div.classList.add('rtl');
             div.innerHTML = text.replace(/\n/g, '<br>');
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
