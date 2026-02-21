@@ -6,7 +6,7 @@ import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 
-from langchain_groq import ChatGroq 
+from langchain_groq import ChatGroq # 👈 Reverted to Groq
 
 # Ensure local imports work correctly
 sys.path.append(os.getcwd()) 
@@ -18,14 +18,14 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     print("❌ ERROR: GROQ_API_KEY not found in environment.")
 
-# Initialize LLM with Groq (Locked to High Accuracy 70B Model)
+# Initialize LLM with Groq
 try:
     llm = ChatGroq(
-        model_name="llama-3.3-70b-versatile", 
-        temperature=0.0,  
+        model_name="llama-3.3-70b-versatile", # 👈 High accuracy 70B model
+        temperature=0.0,  # 👈 0.0 means ZERO creativity/hallucination. Just facts.
         api_key=groq_api_key,
         max_tokens=1024,
-        max_retries=1 
+        max_retries=1 # 👈 THE FIX: Stops silent sleep loops so it fails fast!
     )
     print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
@@ -33,9 +33,11 @@ except Exception as e:
 
 rag = None
 try:
+    # This calls your RAGEngine class
     from backend.ai.rag_engine import RAGEngine
     rag = RAGEngine()
     
+    # Render Memory-Safe Wakeup
     print("🔥 Forcing Local FAISS Brain to wake up...")
     is_awake = False
     while not is_awake:
@@ -50,6 +52,7 @@ try:
 except Exception as e:
     print(f"❌ ERROR: Local AI Memory Failed - {e}")
 
+# Keep-alive heartbeat (Critical for Hugging Face Inference API)
 def keep_brain_awake():
     while True:
         time.sleep(300) 
@@ -66,28 +69,26 @@ app = Flask(__name__)
 
 def generate_groq_response(prompt):
     try:
+        # Stream the response directly to the user
         for chunk in llm.stream(prompt):
             if chunk.content:
                 yield chunk.content
-        return  
+        return  # 👈 CRITICAL: Exits the generator successfully
 
     except Exception as e:
         error_msg = str(e).lower()
+        
+        # Catch Rate Limits (429) - Print ONCE and exit
         if '429' in error_msg or 'rate_limit' in error_msg:
             yield (
                 "\n\n### ⏳ Whoa, Slow Down!\n"
                 "**[Per-Minute Limit Reached]**\n"
                 "I am currently analyzing a massive amount of legal documents for you! "
-                "Please wait **60 seconds**, and ask your question again. 🕰️"
+                "Please wait **60 seconds**, take a deep breath, and ask your question again. If still fails then daily limit reached. Try again tomorrow."
             )
-            return 
-        elif '413' in error_msg or 'request too large' in error_msg:
-            yield (
-                "\n\n### ✂️ Query Too Complex\n"
-                "Your question required reading too many laws at once! "
-                "Please ask a shorter, more specific legal question. ⚖️"
-            )
-            return
+            return  # 👈 CRITICAL: Stops the function from looping
+            
+        # Generic fallback
         else:
             yield f"\n\n### ⚠️ System Interruption\nAn unexpected error occurred: {str(e)}"
             return
@@ -99,56 +100,68 @@ def home(): return render_template('index.html')
 def consult():
     data = request.json
     user_text = data.get('text', '').strip()
-    user_lang = data.get('lang', 'en')
+    user_lang = data.get('lang', 'en') # 👈 NEW: Detect language from frontend
 
     context = ""
     if rag:
         try:
+            # 1. THE WIDE NET: Search k=5 to ensure critical laws are caught
             docs = rag.search(user_text, k=5) 
             if docs:
                 for doc in docs:
+                    # 2. THE SHORT TAIL: Aggressively chop text to only 600 characters. 
+                    # 5 docs * 600 chars = 3,000 characters (Safely under Groq Token Limit)
                     text_snippet = doc.get('text', '')[:600]
                     context += f"\nTEXT: {text_snippet}\n"
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # -------- LANGUAGE CONTROL (STABLE & PRECISE) --------
-
+    # THE DYNAMIC GATEKEEPER & STYLIST PROMPT
     if user_lang == 'ur':
-        language_block = (
-            "User prefers URDU.\n"
-            "Respond completely in clear, formal legal Urdu.\n"
-            "Do NOT mix English unless writing Section numbers.\n"
-            "Keep Section/Article numbers in English digits (e.g., Section 380).\n"
-            "Use professional courtroom-style Urdu.\n"
+        system_prompt = (
+            "You are Qanoon AI, an elite and prestigious Legal Consultant specializing in Pakistani Law.\n"
+            "CRITICAL INSTRUCTION: The user prefers URDU. You MUST write your ENTIRE response in formal, professional 'Adalti' (Legal) Urdu.\n\n"
+            "### 🧠 1. INTENT EVALUATION (INTERNAL):\n"
+            "- If it is a greeting, respond warmly in Urdu: 'السلام علیکم! میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟'\n"
+            "- If the query is abusive or off-topic, respond EXACTLY with: '🛑 **[OFF-TOPIC]** میں صرف پاکستانی قانون سے متعلق سوالات کے جوابات دے سکتا ہوں۔'\n"
+            "- If it is a valid legal question, DO NOT print the Intent Evaluation. Go straight to the Legal Analysis.\n\n"
+            "### 🏛️ 2. VISUAL STYLE & CITATION RULES (URDU):\n"
+            "- Base your legal analysis STRICTLY on the provided DATA.\n"
+            "- If the DATA is irrelevant to the legal query, say: '🛑 **[DATA MISSING]** میرے پاس اس سوال کا جواب دینے کے لیے مخصوص قانونی حوالہ موجود نہیں ہے۔'\n"
+            "- Structure your answer with clear, eye-catching headers EXACTLY like this:\n"
+            "### ⚖️ قانونی تجزیہ\n"
+            "(Your detailed Urdu analysis here using bullet points. Keep Section numbers in English digits, e.g., Section 302)\n"
+            "### 📜 قانونی حوالہ\n"
+            "(List the referenced laws here in Urdu)\n"
+            "- NEVER cite the 'Document Title' or PDF name.\n"
+            "- ONLY cite using the specific Section or Article number found in the text.\n"
+            "- Always end your response with this exact citation line in Urdu: `📜 قانونی اختیار: [Section Number/Name]`.\n"
         )
     else:
-        language_block = (
-            "User prefers ENGLISH.\n"
-            "Respond completely in clear professional legal English.\n"
+        system_prompt = (
+            "You are Qanoon AI, an elite and prestigious Legal Consultant specializing in Pakistani Law.\n"
+            "CRITICAL INSTRUCTION: The user prefers ENGLISH. You must write your entire response in professional English.\n\n"
+            "### 🧠 1. INTENT EVALUATION (INTERNAL):\n"
+            "- If it is a greeting, respond warmly: 'Greetings! I am Qanoon AI, a specialized legal assistant for Pakistani law. How can I assist you today?'\n"
+            "- If the query is abusive or off-topic, respond EXACTLY with: '🛑 **[OFF-TOPIC]** I am Qanoon AI, a professional legal assistant. I can only assist with matters related to Pakistani law.'\n"
+            "- If it is a valid legal question, DO NOT print the Intent Evaluation. Go straight to the Legal Analysis.\n\n"
+            "### 🏛️ 2. VISUAL STYLE & CITATION RULES:\n"
+            "- Base your legal analysis STRICTLY on the provided DATA.\n"
+            "- If the DATA is irrelevant to the legal query, say: '🛑 **[DATA MISSING]** I don't have the specific legal sections in my database to answer this accurately.'\n"
+            "- Structure your answer with clear, eye-catching headers EXACTLY like this:\n"
+            "### ⚖️ Legal Analysis\n"
+            "(Your detailed analysis here using bullet points)\n"
+            "### 📜 Legal Authority\n"
+            "(List the referenced laws here)\n"
+            "- NEVER cite the 'Document Title' or PDF name.\n"
+            "- ONLY cite using the specific Section or Article number found in the text (e.g., Section 302 of the PPC).\n"
+            "- Always end your response with a clear citation line: `📜 Legal Authority: [Section Number/Name]`.\n"
         )
 
-    system_prompt = (
-        "You are Qanoon AI, an elite legal consultant specializing strictly in Pakistani law.\n\n"
-        "STRICT RULES:\n"
-        "1. Base your answer ONLY on the provided DATA.\n"
-        "2. Do NOT use outside knowledge.\n"
-        "3. If DATA is insufficient, respond ONLY with:\n"
-        "   '🛑 [DATA MISSING]'\n"
-        "4. Do NOT mention 'provided data' or internal reasoning.\n"
-        "5. Do NOT repeat yourself.\n\n"
-        "FORMAT:\n"
-        "- Start with a short direct explanation.\n"
-        "- Use bullet points ONLY if listing penalties or conditions.\n"
-        "- Bold ONLY imprisonment terms or fine amounts.\n"
-        "- End with: 📖 Reference: Section [Number]\n\n"
-        f"{language_block}"
-    )
-
-    full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nUSER QUERY:\n{user_text}"
-
+    full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
     return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
+# Lawyers database logic remains unchanged
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")
 
 @app.route('/lawyers', methods=['GET'])
@@ -156,21 +169,33 @@ def get_lawyers():
     all_lawyers = []
     filtered_lawyers = []
     category = request.args.get('category', 'general').lower().strip()
+    
     try:
         if os.path.exists(LAWYERS_DB_PATH):
             with open(LAWYERS_DB_PATH, 'r', encoding='utf-8') as f:
                 all_lawyers = json.load(f)
-        else: return jsonify([]) 
-    except Exception: return jsonify([])
-    if not all_lawyers: return jsonify([])
-    if category == 'general' or not category: return jsonify(all_lawyers[:10])
+        else:
+            return jsonify([]) 
+    except Exception:
+        return jsonify([])
+
+    if not all_lawyers:
+        return jsonify([])
+
+    if category == 'general' or not category:
+        return jsonify(all_lawyers[:10])
+    
     for lawyer in all_lawyers:
         lawyer_tags = [t.lower() for t in lawyer.get('tags', [])]
         lawyer_specialty = lawyer.get('specialty', '').lower()
         if category in lawyer_tags or category in lawyer_specialty:
             filtered_lawyers.append(lawyer)
-    if not filtered_lawyers: return jsonify(all_lawyers[:5])
+    
+    if not filtered_lawyers:
+        return jsonify(all_lawyers[:5])
+        
     return jsonify(filtered_lawyers)
 
 if __name__ == "__main__":
+    # Render deployment port binding
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
