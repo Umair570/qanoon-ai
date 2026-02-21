@@ -16,16 +16,23 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 if not gemini_api_key:
     print("❌ ERROR: GEMINI_API_KEY not found in environment.")
 
-# Initialize LLM with Google Gemini
+# Initialize LLM with Google Gemini (Safety Filters DISABLED)
 try:
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash", # Using Google's fastest model
-        temperature=0.0,  # Keeps answers factual
+        model="gemini-2.5-flash", 
+        temperature=0.0,  
         api_key=gemini_api_key,
         max_tokens=1024,
-        max_retries=1 # Fails fast if rate limits are hit
+        max_retries=1,
+        # 🐛 THE FIX: Disable Google's strict safety filters for legal terminology
+        safety_settings={
+            "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
+            "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
+            "HARM_CATEGORY_HARASSMENT": "BLOCK_NONE",
+            "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE"
+        }
     )
-    print("⚡ SUCCESS: Gemini AI Model Ready!")
+    print("⚡ SUCCESS: Gemini AI Model Ready (Safety Unlocked)!")
 except Exception as e:
     print(f"❌ ERROR: Gemini Initialization Failed - {e}")
 
@@ -93,12 +100,20 @@ def consult():
             docs = rag.search(user_text, k=5) 
             if docs:
                 for doc in docs:
-                    text_snippet = doc.get('text', '')[:600]
-                    context += f"\nTEXT: {text_snippet}\n"
+                    # ⚖️ THE BALANCED FIX: Cap at 2000 characters to save tokens 
+                    # while ensuring the AI gets the full legal paragraph!
+                    if hasattr(doc, 'page_content'):
+                        text_snippet = doc.page_content[:2500]
+                    elif isinstance(doc, dict):
+                        text_snippet = doc.get('text', str(doc))[:2500]
+                    else:
+                        text_snippet = str(doc)[:2500]
+                    
+                    context += f"\n--- DOCUMENT TEXT ---\n{text_snippet}...\n"
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # 🛡️ THE FIXED PROMPT GATEKEEPER (With "No Fourth Wall" Rule)
+    # 🛡️ THE FIXED PROMPT GATEKEEPER 
     if user_lang == 'ur':
         lang_instruction = (
             "CRITICAL INSTRUCTION: User prefers URDU. Write ENTIRE response in formal 'Adalti' (Legal) Urdu.\n\n"
@@ -137,8 +152,8 @@ def consult():
     system_prompt = (
         f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}\n\n"
         "### DATA RULES:\n"
-        "- Base analysis STRICTLY on the DATA provided, but do not mention the data itself.\n"
-        "- If the answer cannot be found in the DATA, state '🛑 [DATA MISSING]' in the chosen language."
+        "- Base analysis primarily on the DATA provided, but do not mention the data itself.\n"
+        "- If the answer absolutely cannot be found in the DATA, state '🛑 [DATA MISSING]' in the chosen language."
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
