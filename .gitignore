@@ -21,11 +21,9 @@ __pycache__/
 
 # --- 4. RAG & Vector Memory ---
 # Local FAISS/Chroma files are no longer needed for production.
-faiss_index/
 chroma_db/
 vectorstore/
-*.index
-*.pkl
+
 
 # --- 5. System & IDE Junk ---
 .DS_Store
