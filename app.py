@@ -6,33 +6,34 @@ import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 # Ensure local imports work correctly
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
 # --- API KEYS & CONFIG ---
-groq_api_key = os.getenv("GROQ_API_KEY")
+gemini_api_key = os.getenv("GEMINI_API_KEY") # NEW: Added Gemini Key
 pinecone_api_key = os.getenv("PINECONE_API_KEY")
 pinecone_index = "qanoon-ai"
 
-if not groq_api_key:
-    print("❌ ERROR: GROQ_API_KEY not found in environment.")
+if not gemini_api_key:
+    print("❌ ERROR: GEMINI_API_KEY not found in environment.")
 if not pinecone_api_key:
     print("❌ ERROR: PINECONE_API_KEY not found in environment.")
 
-# Initialize LLM
+# Initialize LLM with Google Gemini (1,000,000 TPM Limit!)
 try:
-    llm = ChatGroq(
-        temperature=0.0,  # 👈 THE FIX: 0.0 means ZERO creativity/hallucination. Just facts.
-        model_name="llama-3.3-70b-versatile", # 👈 THE FIX: Double the TPM limit (12,000)
-        api_key=groq_api_key,
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash", 
+        temperature=0.0,  # 👈 0.0 means ZERO creativity/hallucination. Just facts.
+        api_key=gemini_api_key,
         max_tokens=1024 
     )
-    print("⚡ SUCCESS: Groq AI Model Ready!")
+    print("⚡ SUCCESS: Gemini AI Model Ready!")
 except Exception as e:
-    print(f"❌ ERROR: Groq Initialization Failed - {e}")
+    print(f"❌ ERROR: Gemini Initialization Failed - {e}")
+
 rag = None
 try:
     # This calls your RAGEngine class
@@ -69,7 +70,8 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 
 app = Flask(__name__)
 
-def generate_groq_response(prompt):
+# Kept the exact same name so it doesn't break any of your dependencies!
+def generate_gemini_response(prompt):
     try:
         # Stream the response directly to the user
         for chunk in llm.stream(prompt):
@@ -80,13 +82,13 @@ def generate_groq_response(prompt):
     except Exception as e:
         error_msg = str(e).lower()
         
-        # Catch Rate Limits (429) - Print ONCE and exit
-        if '429' in error_msg or 'rate_limit' in error_msg:
+        # Catch Google's Rate Limits (429, resourceexhausted, quota) - Print ONCE and exit
+        if '429' in error_msg or 'rate_limit' in error_msg or 'quota' in error_msg or 'resourceexhausted' in error_msg:
             yield (
                 "\n\n### ⏳ Whoa, Slow Down!\n"
-                "**[Per-Minute Limit Reached]**\n"
+                "**[Limit Reached]**\n"
                 "I am currently analyzing a massive amount of legal documents for you! "
-                "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
+                "Please wait a few seconds and ask your question again. 🕰️"
             )
             return  # 👈 CRITICAL: Stops the function from looping
             
@@ -115,12 +117,14 @@ def consult():
     context = ""
     if rag:
         try:
-            # RAG still fetches data, but the LLM will decide whether to use it or ignore it.
-            docs = rag.search(user_text, k=3) 
+            # 1. THE WIDE NET: Increase k to 5 to ensure the PPC doesn't get left behind
+            docs = rag.search(user_text, k=5) 
             if docs:
                 for doc in docs:
-                    # 'title' is passed for context, but the prompt forbids showing it to the user
-                    context += f"\nACT: {doc.get('title')}\nTEXT: {doc.get('text')}\n"
+                    # 2. THE SHORT TAIL: Aggressively chop the text to only 600 characters. 
+                    # 5 docs * 600 chars = 3,000 characters (Way under the Token Limit!)
+                    text_snippet = doc.get('text', '')[:600]
+                    context += f"\nTEXT: {text_snippet}\n"
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
@@ -144,7 +148,7 @@ def consult():
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
-    return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
+    return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
 
 # Lawyers database logic remains unchanged
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")

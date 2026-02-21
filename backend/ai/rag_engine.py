@@ -118,7 +118,7 @@ class RAGEngine:
 
         print("✅ SUCCESS! Cloud Index is now built.")
 
-    def search(self, query, k=2): # Reduced k from 5 to 2
+    def search(self, query, k=5):
         if not self.db:
             return []
         try:
