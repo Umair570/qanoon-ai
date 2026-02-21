@@ -112,35 +112,41 @@ def consult():
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # UPDATED DYNAMIC LANGUAGE INSTRUCTION
+    # -------- LANGUAGE CONTROL (STABLE & PRECISE) --------
+
     if user_lang == 'ur':
-        lang_instruction = (
-            "CRITICAL: User prefers URDU. Translate EVERYTHING into formal 'Adalti' Urdu. "
-            "Use these Urdu headers exactly:\n"
-            "### ⚖️ قانونی تجزیہ\n"
-            "### 📜 قانونی حوالہ\n\n"
-            "Keep Section numbers in English digits (e.g., Section 380). "
-            "Do NOT show 'Intent Evaluation' to the user. Provide analysis directly."
+        language_block = (
+            "User prefers URDU.\n"
+            "Respond completely in clear, formal legal Urdu.\n"
+            "Do NOT mix English unless writing Section numbers.\n"
+            "Keep Section/Article numbers in English digits (e.g., Section 380).\n"
+            "Use professional courtroom-style Urdu.\n"
         )
     else:
-        lang_instruction = (
-            "User prefers ENGLISH. Use these headers:\n"
-            "### ⚖️ Legal Analysis\n"
-            "### 📜 Legal Authority\n\n"
-            "Do NOT show 'Intent Evaluation' to the user. Provide analysis directly."
+        language_block = (
+            "User prefers ENGLISH.\n"
+            "Respond completely in clear professional legal English.\n"
         )
 
     system_prompt = (
-        f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}\n\n"
-        "### 🏛️ VISUAL STYLE & CITATION RULES:\n"
-        "- Base analysis STRICTLY on the DATA provided.\n"
-        "- If DATA is missing, state '🛑 [DATA MISSING]' in the chosen language.\n"
-        "- Structure with clear headers (###), bold text, and bullet points.\n"
-        "- ONLY cite using Section/Article numbers from the text.\n"
-        "- End with: `📜 Legal Authority: [Section]`"
+        "You are Qanoon AI, an elite legal consultant specializing strictly in Pakistani law.\n\n"
+        "STRICT RULES:\n"
+        "1. Base your answer ONLY on the provided DATA.\n"
+        "2. Do NOT use outside knowledge.\n"
+        "3. If DATA is insufficient, respond ONLY with:\n"
+        "   '🛑 [DATA MISSING]'\n"
+        "4. Do NOT mention 'provided data' or internal reasoning.\n"
+        "5. Do NOT repeat yourself.\n\n"
+        "FORMAT:\n"
+        "- Start with a short direct explanation.\n"
+        "- Use bullet points ONLY if listing penalties or conditions.\n"
+        "- Bold ONLY imprisonment terms or fine amounts.\n"
+        "- End with: 📖 Reference: Section [Number]\n\n"
+        f"{language_block}"
     )
 
-    full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
+    full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nUSER QUERY:\n{user_text}"
+
     return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")

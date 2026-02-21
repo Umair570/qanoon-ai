@@ -92,10 +92,10 @@
         #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
 
         /* RTL Class - Enhanced for global flip */
-        .rtl { direction: rtl !important; text-align: right !important; font-family: 'Noto Nastaliq Urdu', serif; }
+        .rtl { direction: rtl !important; text-align: right !important; }
         .rtl .sidebar { border-right: none; border-left: 1px solid var(--border); }
         .rtl .msg.user { align-self: flex-start; }
-        .rtl .msg.bot { align-self: flex-end; }
+        .rtl .msg.bot { align-self: flex-end; font-family: 'Noto Nastaliq Urdu', serif; line-height: 2.2; }
         .rtl .category-card:hover { transform: translateX(-10px); }
         .rtl .lawyer-meta { flex-direction: row-reverse; }
 
@@ -113,7 +113,7 @@
         }
     </style>
 </head>
-<body>
+<body id="mainBody">
 
     <div class="sidebar" id="sidebar">
         <div class="brand-container">
@@ -127,7 +127,7 @@
         </div>
     </div>
 
-    <div class="main">
+    <div class="main" id="mainArea">
         <div class="chat-box" id="chatBox">
             <div class="msg bot" id="welcomeMsg">
                 <span id="welcomeText">
@@ -141,7 +141,7 @@
 
         <div id="loading">Analyzing Legal Documents...</div>
 
-        <div class="input-area">
+        <div class="input-area" id="inputArea">
             <input type="text" id="userInput" placeholder="Type your legal scenario here..." onkeydown="handleEnter(event)">
             <button id="sendBtn" onclick="sendUserMessage()">➤</button>
         </div>
@@ -205,25 +205,20 @@
             document.getElementById('userInput').placeholder = t.placeholder;
             document.getElementById('loading').innerText = t.loading;
             document.getElementById('lawyerHeader').innerText = t.lawyerHeader;
-            document.getElementById('lawyerPlaceholder').innerText = t.lawyerPlace;
+            
+            // Protect lawyer placeholder from null error if a search has already run
+            const p = document.getElementById('lawyerPlaceholder');
+            if(p) p.innerText = t.lawyerPlace;
+            
             document.getElementById('sendBtn').innerText = t.btn;
 
-            // Apply RTL to the entire body and specific components
-            const body = document.body;
-            const chatBox = document.getElementById('chatBox');
-            const inputArea = document.querySelector('.input-area');
-            const sidebar = document.getElementById('sidebar');
+            // Apply RTL to the top-level body to force the entire layout to shift
+            const body = document.getElementById('mainBody');
 
             if(currentLang === 'ur') {
                 body.classList.add('rtl');
-                chatBox.classList.add('rtl');
-                inputArea.classList.add('rtl');
-                sidebar.classList.add('rtl');
             } else {
                 body.classList.remove('rtl');
-                chatBox.classList.remove('rtl');
-                inputArea.classList.remove('rtl');
-                sidebar.classList.remove('rtl');
             }
 
             renderGrid(t.cards);
@@ -318,6 +313,7 @@
             const chatBox = document.getElementById('chatBox');
             const botDiv = document.createElement('div');
             botDiv.className = 'msg bot';
+            // Only attach RTL to new bot messages if currently in Urdu mode
             if(currentLang === 'ur') botDiv.classList.add('rtl');
             botDiv.innerHTML = "..."; 
             chatBox.appendChild(botDiv);
