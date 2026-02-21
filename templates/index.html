@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Qanoon AI - Pakistan</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-dark: #09090b;
@@ -16,7 +16,7 @@
             --text-muted: #a1a1aa;
         }
         body { 
-            font-family: 'Outfit', sans-serif; 
+            font-family: 'Outfit', 'Noto Nastaliq Urdu', sans-serif; 
             background-color: var(--bg-dark); 
             color: var(--text-main); 
             margin: 0; 
@@ -26,7 +26,22 @@
         }
 
         .sidebar { width: 340px; background: var(--panel-bg); backdrop-filter: blur(12px); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 25px; }
-        .brand { font-size: 1.8rem; font-weight: 700; color: var(--neon-green); margin-bottom: 25px; letter-spacing: -1px; }
+        .brand-container { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .brand { font-size: 1.8rem; font-weight: 700; color: var(--neon-green); letter-spacing: -1px; }
+        
+        /* Language Toggle Button */
+        .lang-btn {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--neon-green);
+            border: 1px solid var(--neon-green);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: 0.3s;
+            font-weight: bold;
+        }
+        .lang-btn:hover { background: var(--neon-green); color: black; }
 
         .lawyer-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         .lawyer-list { flex: 1; overflow-y: auto; }
@@ -39,7 +54,7 @@
         .main { flex: 1; display: flex; flex-direction: column; background: radial-gradient(circle at top right, #11231c 0%, #09090b 40%); position: relative; }
         
         .chat-box { flex: 1; padding: 40px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
-        .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.6; font-size: 1rem; animation: slideUp 0.3s ease; }
+        .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.8; font-size: 1rem; animation: slideUp 0.3s ease; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .msg.bot { background: #18181b; border: 1px solid var(--border); color: #d4d4d8; }
         .msg.user { align-self: flex-end; background: var(--neon-green); color: black; font-weight: 500; }
@@ -53,7 +68,7 @@
             border-radius: 8px; 
             cursor: pointer; 
             transition: 0.2s; 
-            text-align: left;
+            text-align: inherit;
             font-size: 0.95rem;
             color: var(--text-main); 
         }
@@ -67,6 +82,9 @@
         
         .footer { width: 100%; text-align: center; font-size: 0.9rem; color: #71717a; font-weight: 700; letter-spacing: 0.5px; padding-bottom: 15px; padding-top: 5px; }
         #loading { display: none; color: var(--neon-green); margin-left: 40px; margin-bottom: 10px; font-weight: bold; }
+
+        /* RTL Class */
+        .rtl { direction: rtl; text-align: right; font-family: 'Noto Nastaliq Urdu', serif; }
 
         @media (max-width: 768px) {
             body { flex-direction: column; }
@@ -85,7 +103,10 @@
 <body>
 
     <div class="sidebar">
-        <div class="brand">Qanoon AI</div>
+        <div class="brand-container">
+            <div class="brand">Qanoon AI</div>
+            <button class="lang-btn" id="langToggle" onclick="toggleLanguage()">اردو</button>
+        </div>
         
         <div class="lawyer-header" id="lawyerHeader">Recommended Lawyers</div>
         <div class="lawyer-list" id="lawyerList">
@@ -96,9 +117,11 @@
     <div class="main">
         <div class="chat-box" id="chatBox">
             <div class="msg bot" id="welcomeMsg">
-                <strong>Assalam-o-Alaikum!</strong> 👋<br>
-                I am your legal assistant. How may I help you?<br>
-                Sample Questions:
+                <span id="welcomeText">
+                    <strong>Assalam-o-Alaikum!</strong> 👋<br>
+                    I am your legal assistant. How may I help you?<br>
+                    Sample Questions:
+                </span>
                 <div class="grid-container" id="gridContainer"></div>
             </div>
         </div>
@@ -107,32 +130,89 @@
 
         <div class="input-area">
             <input type="text" id="userInput" placeholder="Type your legal scenario here..." onkeydown="handleEnter(event)">
-            <button onclick="sendUserMessage()">➤</button>
+            <button id="sendBtn" onclick="sendUserMessage()">➤</button>
         </div>
         
         <div class="footer">Created by Muhammad Umair Ashraf</div>
     </div>
 
     <script>
-        // Cleaned up, English-only cards array
-        const cards = [
-            { title: "What is the punishment for theft?", query: "What is the punishment for theft under PPC?" },
-            { title: "How to file for divorce?", query: "How to file for divorce in Pakistan?" },
-            { title: "Is hacking a crime?", query: "Is hacking a crime in Pakistan?" },
-            { title: "What makes a contract valid?", query: "What makes a contract valid?" },
-            { title: "How to become a tax filer?", query: "How to become a tax filer in Pakistan?" }
-        ];
+        let currentLang = 'en';
 
-        window.onload = function() {
-            renderGrid();
+        const translations = {
+            'en': {
+                welcome: '<strong>Assalam-o-Alaikum!</strong> 👋<br>I am your legal assistant. How may I help you?<br>Sample Questions:',
+                placeholder: 'Type your legal scenario here...',
+                loading: 'Analyzing Legal Documents...',
+                lawyerHeader: 'Recommended Lawyers',
+                lawyerPlace: 'Ask a question.',
+                queryRejected: 'Query rejected.<br>Lawyers unavailable.',
+                finding: 'Finding experts...',
+                btn: '➤',
+                cards: [
+                    { title: "What is the punishment for theft?", query: "What is the punishment for theft under PPC?" },
+                    { title: "How to file for divorce?", query: "How to file for divorce in Pakistan?" },
+                    { title: "Is hacking a crime?", query: "Is hacking a crime in Pakistan?" },
+                    { title: "What makes a contract valid?", query: "What makes a contract valid?" },
+                    { title: "How to become a tax filer?", query: "How to become a tax filer in Pakistan?" }
+                ]
+            },
+            'ur': {
+                welcome: '<strong>اسلام علیکم!</strong> 👋<br>میں آپ کا قانونی معاون ہوں۔ میں آپ کی کیا مدد کر سکتا ہوں؟<br>نمونہ سوالات:',
+                placeholder: 'اپنا قانونی مسئلہ یہاں لکھیں...',
+                loading: 'قانونی دستاویزات کا تجزیہ کیا جا رہا ہے...',
+                lawyerHeader: 'تجویز کردہ وکلاء',
+                lawyerPlace: 'سوال پوچھیں۔',
+                queryRejected: 'سوال مسترد کر دیا گیا۔<br>وکلاء دستیاب نہیں ہیں۔',
+                finding: 'ماہرین تلاش کر رہے ہیں...',
+                btn: 'بھیجیں',
+                cards: [
+                    { title: "چوری کی سزا کیا ہے؟", query: "پاکستان میں چوری کی سزا کیا ہے؟" },
+                    { title: "طلاق کا طریقہ کار کیا ہے؟", query: "پاکستان میں طلاق فائل کرنے کا طریقہ کیا ہے؟" },
+                    { title: "کیا ہیکنگ جرم ہے؟", query: "پاکستان میں ہیکنگ کی قانونی حیثیت کیا ہے؟" },
+                    { title: "معاہدہ کب قانونی ہوتا ہے؟", query: "قانون کے مطابق معاہدہ کی شرائط کیا ہیں؟" },
+                    { title: "ٹیکس فائلر کیسے بنیں؟", query: "پاکستان میں ٹیکس فائلر بننے کا طریقہ کیا ہے؟" }
+                ]
+            }
         };
 
-        function renderGrid() {
+        window.onload = function() {
+            renderUI();
+        };
+
+        function toggleLanguage() {
+            currentLang = currentLang === 'en' ? 'ur' : 'en';
+            renderUI();
+        }
+
+        function renderUI() {
+            const t = translations[currentLang];
+            document.getElementById('langToggle').innerText = currentLang === 'en' ? 'اردو' : 'English';
+            document.getElementById('welcomeText').innerHTML = t.welcome;
+            document.getElementById('userInput').placeholder = t.placeholder;
+            document.getElementById('loading').innerText = t.loading;
+            document.getElementById('lawyerHeader').innerText = t.lawyerHeader;
+            document.getElementById('lawyerPlaceholder').innerText = t.lawyerPlace;
+            document.getElementById('sendBtn').innerText = t.btn;
+
+            // Handle RTL/LTR
+            const chatBox = document.getElementById('chatBox');
+            const inputArea = document.querySelector('.input-area');
+            if(currentLang === 'ur') {
+                chatBox.classList.add('rtl');
+                inputArea.classList.add('rtl');
+            } else {
+                chatBox.classList.remove('rtl');
+                inputArea.classList.remove('rtl');
+            }
+
+            renderGrid(t.cards);
+        }
+
+        function renderGrid(cards) {
             const container = document.getElementById('gridContainer');
             if (!container) return; 
-            
             container.innerHTML = "";
-            
             cards.forEach(card => {
                 const div = document.createElement('div');
                 div.className = 'category-card';
@@ -147,13 +227,12 @@
         async function fetchSmartLawyers(query) {
             const q = query.toLowerCase();
             let category = "general"; 
-
             const KEYWORDS = {
-                'family':   ['divorce', 'khula', 'wife', 'husband', 'custody', 'maintenance', 'child', 'marriage', 'dowry', 'guardian', 'sharia'],
-                'criminal': ['murder', 'kill', 'theft', 'robbery', 'police', 'jail', 'bail', 'arrest', 'fir', 'crime', 'drug', 'weapon', 'assault', 'nab'],
-                'property': ['land', 'house', 'plot', 'rent', 'tenant', 'eviction', 'lease', 'possession', 'property', 'real estate', 'neighbor', 'transfer'],
-                'corporate':['company', 'business', 'tax', 'register', 'contract', 'partnership', 'firm', 'secp', 'trademark', 'license', 'copyright'],
-                'cyber':    ['internet', 'online', 'hack', 'facebook', 'whatsapp', 'scam', 'fraud', 'data', 'photo', 'blackmail', 'cyber'],
+                'family':   ['divorce', 'khula', 'wife', 'husband', 'custody', 'maintenance', 'child', 'marriage', 'dowry', 'guardian', 'sharia', 'طلاق', 'خالع'],
+                'criminal': ['murder', 'kill', 'theft', 'robbery', 'police', 'jail', 'bail', 'arrest', 'fir', 'crime', 'drug', 'weapon', 'assault', 'nab', 'قتل', 'چوری'],
+                'property': ['land', 'house', 'plot', 'rent', 'tenant', 'eviction', 'lease', 'possession', 'property', 'real estate', 'neighbor', 'transfer', 'زمین', 'جائیداد'],
+                'corporate':['company', 'business', 'tax', 'register', 'contract', 'partnership', 'firm', 'secp', 'trademark', 'license', 'copyright', 'ٹیکس'],
+                'cyber':    ['internet', 'online', 'hack', 'facebook', 'whatsapp', 'scam', 'fraud', 'data', 'photo', 'blackmail', 'cyber', 'ہیکنگ'],
                 'labor':    ['job', 'salary', 'employee', 'employer', 'terminate', 'work', 'wages', 'harassment', 'bonus', 'pension'],
                 'civil':    ['defamation', 'money', 'loan', 'cheque', 'damage', 'contract breach', 'suing', 'sue']
             };
@@ -166,26 +245,17 @@
             }
 
             const list = document.getElementById('lawyerList');
-            if (!list) return;
-            
-            list.innerHTML = '<div style="text-align:center; color:#52525b; margin-top:20px;">Finding experts...</div>'; 
+            list.innerHTML = `<div style="text-align:center; color:#52525b; margin-top:20px;">${translations[currentLang].finding}</div>`; 
 
             try {
                 const response = await fetch(`/lawyers?category=${category}`);
                 const lawyers = await response.json();
-                
                 if (isQueryRejected) return; 
-
                 list.innerHTML = ""; 
-                
                 if(lawyers.length === 0) { 
-                    list.innerHTML = `<div style="color:#52525b;text-align:center;padding:10px;">
-                        No lawyers found for <strong>${category.toUpperCase()}</strong>.<br>
-                        <small>Showing general experts instead.</small>
-                    </div>`; 
+                    list.innerHTML = `<div style="color:#52525b;text-align:center;padding:10px;">No lawyers found.</div>`; 
                     return; 
                 }
-
                 lawyers.forEach(lawyer => {
                     const card = document.createElement('div');
                     card.className = 'lawyer-card';
@@ -199,9 +269,7 @@
                     list.appendChild(card);
                 });
             } catch (error) {
-                if (!isQueryRejected) {
-                    list.innerHTML = `<div style="color:#ef4444;text-align:center;">Connection failed.</div>`;
-                }
+                if (!isQueryRejected) list.innerHTML = `<div style="color:#ef4444;text-align:center;">Connection failed.</div>`;
             }
         }
 
@@ -212,19 +280,16 @@
 
         async function sendUserMessage() {
             if (isWaitingForResponse) return;
-
             const input = document.getElementById('userInput');
-            const submitBtn = document.querySelector('.input-area button');
+            const submitBtn = document.getElementById('sendBtn');
             const text = input.value.trim();
             if (!text) return;
 
             isWaitingForResponse = true;
             isQueryRejected = false; 
-            
             input.disabled = true;
             submitBtn.disabled = true;
             submitBtn.style.opacity = '0.5';
-
             document.getElementById('loading').style.display = 'block';
 
             addMessage(text, 'user');
@@ -233,7 +298,8 @@
             const chatBox = document.getElementById('chatBox');
             const botDiv = document.createElement('div');
             botDiv.className = 'msg bot';
-            botDiv.innerHTML = ""; 
+            if(currentLang === 'ur') botDiv.classList.add('rtl');
+            botDiv.innerHTML = "..."; 
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -243,11 +309,10 @@
                 const response = await fetch('/consult', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text })
+                    body: JSON.stringify({ text: text, lang: currentLang }) // Passing lang
                 });
 
                 document.getElementById('loading').style.display = 'none';
-
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullText = "";
@@ -255,30 +320,17 @@
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    
                     const chunk = decoder.decode(value, { stream: true });
                     fullText += chunk;
                     
                     let displayHTML = fullText;
-
-                    const rejectionTriggers = [
-                        "[REJECTED]",
-                        "I can only answer questions related to Pakistani law",
-                        "I do not have specific information regarding this",
-                        "professional legal assistant"
-                    ];
-                    
+                    const rejectionTriggers = ["[REJECTED]", "Pakistani law", "OFF-TOPIC"];
                     const isFlagged = rejectionTriggers.some(trigger => displayHTML.includes(trigger));
 
                     if (isFlagged) {
                         isQueryRejected = true; 
-                        
-                        displayHTML = displayHTML.replace("🛑 [REJECTED]", "🛑").replace("[REJECTED]", "🛑");
-                        
                         const lList = document.getElementById('lawyerList');
-                        if (lList) {
-                            lList.innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px; font-size: 0.85rem;">Query rejected.<br>Lawyers unavailable for this topic.</div>`;
-                        }
+                        if (lList) lList.innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px;">${translations[currentLang].queryRejected}</div>`;
                     }
 
                     displayHTML = displayHTML.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--neon-green);">$1</strong>');
@@ -287,7 +339,6 @@
                     botDiv.innerHTML = displayHTML;
                     chatBox.scrollTop = chatBox.scrollHeight;
                 }
-
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
                 botDiv.innerHTML = "⚠️ Error: Backend not responding.";
@@ -304,6 +355,7 @@
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
             div.className = `msg ${sender}`;
+            if(currentLang === 'ur') div.classList.add('rtl');
             div.innerHTML = text.replace(/\n/g, '<br>');
             chatBox.appendChild(div);
             chatBox.scrollTop = chatBox.scrollHeight;
