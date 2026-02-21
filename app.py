@@ -11,13 +11,19 @@ from langchain_groq import ChatGroq
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
+# --- API KEYS & CONFIG ---
 groq_api_key = os.getenv("GROQ_API_KEY")
+pinecone_api_key = os.getenv("PINECONE_API_KEY") # NEW: Added for cloud database
+pinecone_index = "qanoon-ai"                    # NEW: Your index name
+
 if not groq_api_key:
     print("❌ ERROR: GROQ_API_KEY not found in .env file.")
+if not pinecone_api_key:
+    print("❌ ERROR: PINECONE_API_KEY not found in .env file.")
 
 try:
     llm = ChatGroq(
-        temperature=0.2, # Low temperature keeps it analytical and factual
+        temperature=0.2, 
         model_name="llama-3.1-8b-instant", 
         api_key=groq_api_key
     )
@@ -25,9 +31,10 @@ try:
 except Exception as e:
     print(f"❌ ERROR: Groq Initialization Failed - {e}")
 
-print("🔌 Initializing Cloud Brain on Startup...")
+print("🔌 Initializing Pinecone Cloud Brain on Startup...")
 rag = None
 try:
+    # UPDATED: Assuming your RAGEngine class is updated to use Pinecone
     from backend.ai.rag_engine import RAGEngine
     rag = RAGEngine()
     
@@ -35,9 +42,10 @@ try:
     is_awake = False
     while not is_awake:
         try:
+            # Pings the embedding model to ensure the Hugging Face endpoint is active
             rag.embeddings.embed_query("wake up")
             is_awake = True
-            print("✅ SUCCESS: Hugging Face API is fully awake and ready!")
+            print("✅ SUCCESS: Pinecone + Hugging Face are fully awake and ready!")
         except Exception:
             print("⏳ Hugging Face is still booting. Knocking again in 5 seconds...")
             time.sleep(5)
@@ -95,30 +103,32 @@ def consult():
     
     if rag:
         try:
-            # Reverted to k=5 to keep the context clean and prevent noise confusion
+            # The rag.search function now pulls from Pinecone via your RAGEngine
             docs = rag.search(user_text, k=5)
             if docs:
                 context = ""
                 for doc in docs:
-                    context += f"\n--- SOURCE: {doc['title']} ---\n{doc['text']}\n"
+                    # UPDATED: Matches the metadata structure used in Pinecone migration
+                    title = doc.get('title', 'Unknown Source')
+                    text = doc.get('text', 'No content available')
+                    context += f"\n--- SOURCE: {title} ---\n{text}\n"
         except Exception as e:
             def generic_error_message():
-                yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the database: {str(e)}"
+                yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the cloud database: {str(e)}"
             return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
-    # --- THE STRICT RAG (ANTI-HALLUCINATION) PROMPT ---
     system_prompt = (
         "You are Qanoon AI, an expert legal advisor for Pakistani law.\n"
         "You MUST base your answer ENTIRELY on the provided DATA block below. You are strictly forbidden from using outside knowledge to guess an answer.\n\n"
         "🚨 STRICT RAG RULES:\n"
-        "1. If the provided DATA contains information relevant to the user's query, answer it confidently. Do NOT use phrases like 'According to the data' or 'The provided text says'. Act like a legal expert stating facts.\n"
-        "2. If the provided DATA does NOT contain the answer, you MUST NOT hallucinate or guess. You must respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
-        "3. If the query is abusive, offensive, or completely unrelated to law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
+        "1. If the provided DATA contains information relevant to the user's query, answer it confidently. Act like a legal expert stating facts.\n"
+        "2. If the provided DATA does NOT contain the answer, respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
+        "3. If the query is abusive or unrelated to law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
         "💬 FORMATTING:\n"
-        "- Answer concisely in a natural, conversational tone (max 3-4 sentences).\n"
-        "- Use short bullet points if there are multiple rules or penalties to list.\n"
+        "- Answer concisely (max 3-4 sentences).\n"
+        "- Use short bullet points for rules/penalties.\n"
         "- **Bold** the actual penalties, prison times, or fine amounts.\n"
-        "- If a specific Section is mentioned in the DATA, end your response on a new line with: '📖 Reference: Section [Number]'.\n"
+        "- Always end your response on a new line with: '📖 Reference: [Document Title]' based on the SOURCE provided in the DATA.\n"
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
