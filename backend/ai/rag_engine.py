@@ -39,13 +39,13 @@ class RAGEngine:
         self.load_index()
 
     def load_index(self):
-        """Connects to the existing cloud index without re-uploading."""
+        """Connects to the existing cloud index using environment variables."""
         try:
-            # Connect to existing index already populated with 3,019 chunks
+            # FIX: Removed the 'pinecone_api_key' argument. 
+            # It automatically uses the 'PINECONE_API_KEY' from your .env/environment.
             self.db = PineconeVectorStore.from_existing_index(
                 index_name=INDEX_NAME,
-                embedding=self.embeddings,
-                pinecone_api_key=os.getenv("PINECONE_API_KEY")
+                embedding=self.embeddings
             )
             print("✅ Cloud AI Memory Connected Successfully!")
         except Exception as e:
