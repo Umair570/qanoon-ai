@@ -71,31 +71,24 @@ app = Flask(__name__)
 
 def generate_groq_response(prompt):
     try:
+        # Stream the response directly to the user
         for chunk in llm.stream(prompt):
             if chunk.content:
                 yield chunk.content
-        return 
+        return  # 👈 CRITICAL: Exits the generator successfully
 
     except Exception as e:
         error_msg = str(e).lower()
         
-        # Catch Rate Limits (429)
+        # Catch Rate Limits (429) - Print ONCE and exit
         if '429' in error_msg or 'rate_limit' in error_msg:
-            if 'tokens per minute' in error_msg or 'tpm' in error_msg or 'per minute' in error_msg:
-                yield (
-                    "\n\n### ⏳ Whoa, Slow Down!\n"
-                    "**[Per-Minute Limit Reached]**\n"
-                    "I am currently analyzing a massive amount of legal documents for you! "
-                    "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
-                )
-            else:
-                yield (
-                    "\n\n### 🌙 Time to Rest!\n"
-                    "**[Daily Server Limit Reached]**\n"
-                    "Qanoon AI has reached its maximum server capacity for today. "
-                    "Please come back tomorrow for more elite legal assistance! 🏛️"
-                )
-            return
+            yield (
+                "\n\n### ⏳ Whoa, Slow Down!\n"
+                "**[Per-Minute Limit Reached]**\n"
+                "I am currently analyzing a massive amount of legal documents for you! "
+                "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
+            )
+            return  # 👈 CRITICAL: Stops the function from looping
             
         # Catch Token Overload (413)
         elif '413' in error_msg or 'request too large' in error_msg:
