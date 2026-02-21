@@ -97,41 +97,37 @@ def home(): return render_template('index.html')
 @app.route('/consult', methods=['POST'])
 def consult():
     data = request.json
-    user_text = data.get('text', '')
-    
-    print(f"🔍 Analyzing: {user_text}")
-    context = "No specific legal document found."
-    
+    user_text = data.get('text', '').strip()
+
+    context = ""
     if rag:
         try:
-            # Re-fetch docs with lower k
+            # RAG still fetches data, but the LLM will decide whether to use it or ignore it.
             docs = rag.search(user_text, k=2) 
             if docs:
-                context = ""
                 for doc in docs:
-                    title = doc.get('title', 'Unknown Source')
-                    # LIMIT: Only take the first 1,500 characters of each result
-                    # This keeps your total tokens way below the 6,000 limit.
-                    text_snippet = doc.get('text', '')[:1500] 
-                    context += f"\n--- SOURCE: {title} ---\n{text_snippet}\n"
+                    # 'title' is passed for context, but the prompt forbids showing it to the user
+                    context += f"\nACT: {doc.get('title')}\nTEXT: {doc.get('text')}\n"
         except Exception as e:
-            def generic_error_message():
-                yield f"<h3>⚠️ Memory Search Error</h3>Cloud retrieval failed: {str(e)}"
-            return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
+             return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # THE STRICT RAG (ANTI-HALLUCINATION) PROMPT
+    # THE DYNAMIC GATEKEEPER & STYLIST PROMPT
     system_prompt = (
-        "You are Qanoon AI, an expert legal advisor for Pakistani law.\n"
-        "You MUST base your answer ENTIRELY on the provided DATA block below. You are strictly forbidden from using outside knowledge to guess an answer.\n\n"
-        "🚨 STRICT RAG RULES:\n"
-        "1. If the provided DATA contains information relevant to the user's query, answer it confidently. Act like a legal expert stating facts.\n"
-        "2. If the provided DATA does NOT contain the answer, respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
-        "3. If the query is abusive or unrelated to law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
-        "💬 FORMATTING:\n"
-        "- Answer concisely in a natural, conversational tone (max 3-4 sentences).\n"
-        "- Use short bullet points if there are multiple rules or penalties.\n"
-        "- **Bold** the actual penalties, prison times, or fine amounts.\n"
-        "- Always end your response on a new line with: '📖 Reference: [Document Title]' using the SOURCE provided in the DATA.\n"
+        "You are Qanoon AI, an elite and prestigious Legal Consultant specializing in Pakistani Law.\n"
+        "Your goal is to provide authoritative, visually structured, and fascinating legal guidance.\n\n"
+        "### 🧠 1. INTENT EVALUATION (GATEKEEPER):\n"
+        "Evaluate the USER QUERY before answering to determine their intent.\n"
+        "- If it is a greeting or general conversation (e.g., hi, how are you, who are you), IGNORE the DATA and respond warmly: 'Greetings! I am Qanoon AI, a specialized legal assistant for Pakistani law. How can I assist you with your legal matters today?'\n"
+        "- If the query is abusive, inappropriate, or completely unrelated to law, IGNORE the DATA and respond EXACTLY with: '🛑 **[OFF-TOPIC]** I am Qanoon AI, a professional legal assistant. I can only assist with matters related to Pakistani law.'\n"
+        "- If it is a valid legal question, proceed to the rules below.\n\n"
+        "### 🏛️ 2. VISUAL STYLE & CITATION RULES:\n"
+        "- Base your legal analysis STRICTLY on the provided DATA.\n"
+        "- If the DATA is irrelevant to the legal query, say: '🛑 **[DATA MISSING]** I don't have the specific legal sections in my database to answer this accurately.'\n"
+        "- Structure your answer with clear, eye-catching headers (e.g., ### ⚖️ Legal Analysis) and bullet points.\n"
+        "- Use **bold** text for important terms, penalties, and timeframes.\n"
+        "- NEVER cite the 'Document Title' or PDF name.\n"
+        "- ONLY cite using the specific Section or Article number found in the text (e.g., Section 302 of the PPC).\n"
+        "- Always end your response with a clear citation line: `📜 Legal Authority: [Section Number/Name]`.\n"
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
