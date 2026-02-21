@@ -6,33 +6,30 @@ import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq # 👈 Reverted to Groq
 
 # Ensure local imports work correctly
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
 # --- API KEYS & CONFIG ---
-gemini_api_key = os.getenv("GEMINI_API_KEY") # NEW: Added Gemini Key
-pinecone_api_key = os.getenv("PINECONE_API_KEY")
-pinecone_index = "qanoon-ai"
+groq_api_key = os.getenv("GROQ_API_KEY")
 
-if not gemini_api_key:
-    print("❌ ERROR: GEMINI_API_KEY not found in environment.")
-if not pinecone_api_key:
-    print("❌ ERROR: PINECONE_API_KEY not found in environment.")
+if not groq_api_key:
+    print("❌ ERROR: GROQ_API_KEY not found in environment.")
 
-# Initialize LLM with Google Gemini (1,000,000 TPM Limit!)
+# Initialize LLM with Groq
 try:
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", 
+    llm = ChatGroq(
+        model_name="llama-3.3-70b-versatile", # 👈 High accuracy 70B model
         temperature=0.0,  # 👈 0.0 means ZERO creativity/hallucination. Just facts.
-        api_key=gemini_api_key,
-        max_tokens=1024 
+        api_key=groq_api_key,
+        max_tokens=1024,
+        max_retries=1 # 👈 THE FIX: Stops silent sleep loops so it fails fast!
     )
-    print("⚡ SUCCESS: Gemini AI Model Ready!")
+    print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
-    print(f"❌ ERROR: Gemini Initialization Failed - {e}")
+    print(f"❌ ERROR: Groq Initialization Failed - {e}")
 
 rag = None
 try:
@@ -40,20 +37,20 @@ try:
     from backend.ai.rag_engine import RAGEngine
     rag = RAGEngine()
     
-    # Render Memory-Safe Wakeup: Ping the API instead of loading a local model
-    print("🔥 Forcing Cloud Embedding API to wake up...")
+    # Render Memory-Safe Wakeup
+    print("🔥 Forcing Local FAISS Brain to wake up...")
     is_awake = False
     while not is_awake:
         try:
             rag.embeddings.embed_query("wake up")
             is_awake = True
-            print("✅ SUCCESS: Cloud Memory is fully awake!")
+            print("✅ SUCCESS: Local FAISS Memory is fully awake!")
         except Exception:
-            print("⏳ Cloud API is still booting. Knocking again in 5 seconds...")
+            print("⏳ Model is still booting. Knocking again in 5 seconds...")
             time.sleep(5)
             
 except Exception as e:
-    print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
+    print(f"❌ ERROR: Local AI Memory Failed - {e}")
 
 # Keep-alive heartbeat (Critical for Hugging Face Inference API)
 def keep_brain_awake():
@@ -62,7 +59,7 @@ def keep_brain_awake():
         if rag:
             try:
                 rag.embeddings.embed_query("heartbeat ping")
-                print("💓 [Heartbeat] Sent signal to keep Cloud Brain awake.")
+                print("💓 [Heartbeat] Sent signal to keep Embedding Brain awake.")
             except Exception:
                 pass 
 
@@ -70,8 +67,7 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 
 app = Flask(__name__)
 
-# Kept the exact same name so it doesn't break any of your dependencies!
-def generate_gemini_response(prompt):
+def generate_groq_response(prompt):
     try:
         # Stream the response directly to the user
         for chunk in llm.stream(prompt):
@@ -82,13 +78,13 @@ def generate_gemini_response(prompt):
     except Exception as e:
         error_msg = str(e).lower()
         
-        # Catch Google's Rate Limits (429, resourceexhausted, quota) - Print ONCE and exit
-        if '429' in error_msg or 'rate_limit' in error_msg or 'quota' in error_msg or 'resourceexhausted' in error_msg:
+        # Catch Rate Limits (429) - Print ONCE and exit
+        if '429' in error_msg or 'rate_limit' in error_msg:
             yield (
                 "\n\n### ⏳ Whoa, Slow Down!\n"
-                "**[Limit Reached]**\n"
+                "**[Per-Minute Limit Reached]**\n"
                 "I am currently analyzing a massive amount of legal documents for you! "
-                "Please wait a few seconds and ask your question again. 🕰️"
+                "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
             )
             return  # 👈 CRITICAL: Stops the function from looping
             
@@ -117,12 +113,12 @@ def consult():
     context = ""
     if rag:
         try:
-            # 1. THE WIDE NET: Increase k to 5 to ensure the PPC doesn't get left behind
+            # 1. THE WIDE NET: Search k=5 to ensure critical laws are caught
             docs = rag.search(user_text, k=5) 
             if docs:
                 for doc in docs:
-                    # 2. THE SHORT TAIL: Aggressively chop the text to only 600 characters. 
-                    # 5 docs * 600 chars = 3,000 characters (Way under the Token Limit!)
+                    # 2. THE SHORT TAIL: Aggressively chop text to only 600 characters. 
+                    # 5 docs * 600 chars = 3,000 characters (Safely under Groq Token Limit)
                     text_snippet = doc.get('text', '')[:600]
                     context += f"\nTEXT: {text_snippet}\n"
         except Exception as e:
@@ -148,7 +144,7 @@ def consult():
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
-    return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
+    return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
 # Lawyers database logic remains unchanged
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")

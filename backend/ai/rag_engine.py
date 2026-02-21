@@ -1,33 +1,29 @@
 import os
+import sys
+import time
 import json
 import concurrent.futures
-from tqdm import tqdm  # Progress bar
+from tqdm import tqdm  
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
-from langchain_pinecone import PineconeVectorStore 
+from langchain_community.vectorstores import FAISS 
 from langchain_core.documents import Document
 from dotenv import load_dotenv
-from pinecone import Pinecone 
 
 # Load environment variables
 load_dotenv()
 
 # --- CONFIGURATION ---
-# Path used only for local building/re-indexing
 JSON_FILE_PATH = os.path.join(os.getcwd(), "backend", "data", "processed", "legal_data_final.json")
-INDEX_NAME = "qanoon-ai" 
+FAISS_INDEX_PATH = os.path.join(os.getcwd(), "backend", "data", "faiss_index") 
 
 class RAGEngine:
     def __init__(self):
-        print("🔌 Initializing Cloud Brain (Hugging Face + Pinecone)...")
+        print("🔌 Initializing Local Brain (Hugging Face + FAISS)...")
         
         hf_token = os.getenv("HF_TOKEN")
-        pc_api_key = os.getenv("PINECONE_API_KEY")
-
         if not hf_token:
             print("⚠️ WARNING: HF_TOKEN not found!")
-        if not pc_api_key:
-            print("⚠️ WARNING: PINECONE_API_KEY not found!")
 
         # API-BASED EMBEDDINGS (Memory Safe for Render)
         self.embeddings = HuggingFaceEndpointEmbeddings(
@@ -39,17 +35,20 @@ class RAGEngine:
         self.load_index()
 
     def load_index(self):
-        """Connects to the existing cloud index using environment variables."""
+        """Connects to the existing local FAISS index."""
         try:
-            # FIX: Removed the 'pinecone_api_key' argument. 
-            # It automatically uses the 'PINECONE_API_KEY' from your .env/environment.
-            self.db = PineconeVectorStore.from_existing_index(
-                index_name=INDEX_NAME,
-                embedding=self.embeddings
-            )
-            print("✅ Cloud AI Memory Connected Successfully!")
+            if os.path.exists(FAISS_INDEX_PATH):
+                # allow_dangerous_deserialization is required to load FAISS indices safely on your own server
+                self.db = FAISS.load_local(
+                    folder_path=FAISS_INDEX_PATH, 
+                    embeddings=self.embeddings, 
+                    allow_dangerous_deserialization=True 
+                )
+                print("✅ Local FAISS Memory Connected Successfully!")
+            else:
+                print("⚠️ FAISS index not found. You need to build it first.")
         except Exception as e:
-            print(f"⚠️ Error connecting to cloud memory: {e}")
+            print(f"⚠️ Error connecting to local FAISS memory: {e}")
 
     def process_single_entry(self, entry):
         """Fast extraction for JSON records."""
@@ -73,7 +72,7 @@ class RAGEngine:
         return None
 
     def build_index_from_json(self):
-        """Extreme speed local build and cloud upsert."""
+        """Extreme speed local build and save to FAISS disk with Auto-Save."""
         print(f"🏗️  Loading data from: {JSON_FILE_PATH}")
         if not os.path.exists(JSON_FILE_PATH):
             print(f"❌ Error: JSON file not found at {JSON_FILE_PATH}")
@@ -93,30 +92,50 @@ class RAGEngine:
         final_docs = text_splitter.split_documents(documents)
         
         total_chunks = len(final_docs)
-        print(f"🚀 Pushing {total_chunks} chunks to Pinecone...")
+        print(f"🚀 Building Local FAISS Vector Store with {total_chunks} chunks...")
 
-        # Small batches for API stability
+        # Build in batches to save RAM
         batch_size = 50 
         
-        # Initialize Pinecone Client
-        pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-
-        for i in tqdm(range(0, total_chunks, batch_size), desc="Cloud Upload Progress"):
+        for i in tqdm(range(0, total_chunks, batch_size), desc="Local FAISS Progress"):
             batch = final_docs[i : i + batch_size]
             
-            # Ensure metadata stays under 40KB per chunk
+            # Ensure metadata stays under limits just in case
             for doc in batch:
                 if len(doc.page_content.encode('utf-8')) > 38000:
                     doc.page_content = doc.page_content[:38000]
 
-            if self.db is None:
-                self.db = PineconeVectorStore.from_documents(
-                    batch, self.embeddings, index_name=INDEX_NAME
-                )
-            else:
-                self.db.add_documents(batch)
+            # --- 🛡️ THE FIX: ROBUST RETRY LOOP ---
+            success = False
+            retries = 0
+            while not success and retries < 5:
+                try:
+                    if self.db is None:
+                        self.db = FAISS.from_documents(batch, self.embeddings)
+                    else:
+                        self.db.add_documents(batch)
+                    success = True
+                except Exception as e:
+                    retries += 1
+                    print(f"\n⚠️ Hugging Face API Overloaded. Sleeping 15s... (Attempt {retries}/5)")
+                    time.sleep(15)
+            
+            # If it fails 5 times in a row, save everything done so far and exit cleanly.
+            if not success:
+                print("\n❌ Fatal Error: API completely unresponsive. Saving progress before quitting...")
+                if self.db:
+                    self.db.save_local(FAISS_INDEX_PATH)
+                sys.exit(1)
 
-        print("✅ SUCCESS! Cloud Index is now built.")
+            # --- 💾 THE FIX: AUTO-SAVE FEATURE ---
+            # Save progress every 2,500 chunks (50 batches) so you never start from zero!
+            if i > 0 and i % 2500 == 0 and self.db:
+                self.db.save_local(FAISS_INDEX_PATH)
+
+        # Final Save
+        if self.db:
+            self.db.save_local(FAISS_INDEX_PATH)
+            print(f"\n✅ SUCCESS! Local FAISS Index completely built and saved to {FAISS_INDEX_PATH}.")
 
     def search(self, query, k=5):
         if not self.db:
@@ -137,4 +156,5 @@ class RAGEngine:
 if __name__ == "__main__":
     # Create engine and build ONLY if run directly
     rag = RAGEngine()
-    # rag.build_index_from_json()
+    # Uncomment the line below, run this file once to generate the faiss_index folder, then comment it out again!
+    rag.build_index_from_json()
