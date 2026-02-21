@@ -12,6 +12,7 @@ langchain-groq
 langchain-huggingface
 langchain-pinecone
 langchain-text-splitters
+gunicorn
 
 # Data Processing
 pypdf
