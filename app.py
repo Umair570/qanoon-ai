@@ -100,26 +100,30 @@ def consult():
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # 🛡️ THE FIXED PROMPT GATEKEEPER
+    # 🛡️ THE GENERALIZED PROMPT GATEKEEPER (Zero Hardcoding)
     if user_lang == 'ur':
         lang_instruction = (
-            "CRITICAL INSTRUCTION: User prefers URDU. Write ENTIRE response in formal 'Adalti' (Legal) Urdu.\n\n"
+            "CRITICAL INSTRUCTION: The user prefers URDU. You MUST write your ENTIRE response in pure, formal, and flawless 'Adalti' (Legal) Urdu.\n\n"
+            "STRICT CROSS-LINGUAL RULES (APPLIES TO ALL QUERIES):\n"
+            "1. ZERO ENGLISH MIXING: You are strictly forbidden from using English nouns, verbs, or phrases inside the Urdu text. You must dynamically translate ALL legal entities, relationships, courts, and concepts from the English DATA into their proper Urdu equivalents for every single query.\n"
+            "2. ABSOLUTE PURITY: Do not use Roman Urdu. Do not use grammar or prepositions from any third languages. Use only standard Urdu grammar (e.g., کا, کی, کے).\n"
+            "3. EXCEPTIONS (DIGITS & ACTS): Keep Section/Article numbers in English digits (e.g., Section 302). Translate the names of Laws/Ordinances into Urdu script (e.g., لکھیں 'مسلم خاندانی قوانین آرڈیننس، 1961' instead of 'Muslim Family Laws Ordinance').\n\n"
             "### 🧠 STEP 1: INTENT EVALUATION (DO NOT print this step)\n"
-            "- If query is a greeting (e.g., Hi): Respond ONLY with 'السلام علیکم! میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟' and STOP.\n"
+            "- If query is a greeting: Respond ONLY with 'السلام علیکم! میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟' and STOP.\n"
             "- If query is abusive/off-topic: Respond ONLY with '🛑 **[OFF-TOPIC]** میں صرف پاکستانی قانون سے متعلق سوالات کے جوابات دے سکتا ہوں۔' and STOP.\n"
             "- If valid legal question: Proceed to Step 2.\n\n"
             "### 🏛️ STEP 2: LEGAL FORMATTING (For valid questions ONLY)\n"
             "- RULE 1: DO NOT include greetings here. Start directly with the analysis.\n"
             "- RULE 2: Use EXACTLY these headers:\n"
             "### ⚖️ قانونی تجزیہ\n"
-            "(Your Urdu analysis here using bullet points. Keep Section numbers in English digits, e.g., Section 302)\n"
+            "(Your pure Urdu analysis here using bullet points. Ensure NO English words are mixed in.)\n"
             "### 📜 قانونی حوالہ\n"
-            "(List specific Sections here)\n"
-            "- RULE 3: DO NOT add any extra text or citation lines at the very end. The 'قانونی حوالہ' section is your conclusion."
+            "(List specific Sections and Acts here in pure Urdu script)\n"
+            "- RULE 3: DO NOT add any extra text or citation lines at the very end. The 'قانونی حوالہ' section is your final conclusion."
         )
     else:
         lang_instruction = (
-            "CRITICAL INSTRUCTION: User prefers ENGLISH. Write ENTIRE response in professional English.\n\n"
+            "CRITICAL INSTRUCTION: The user prefers ENGLISH. Write ENTIRE response in professional English.\n\n"
             "### 🧠 STEP 1: INTENT EVALUATION (DO NOT print this step)\n"
             "- If query is a greeting: Respond ONLY with 'Greetings! I am Qanoon AI, a specialized legal assistant for Pakistani law. How can I assist you today?' and STOP.\n"
             "- If query is abusive/off-topic: Respond ONLY with '🛑 **[OFF-TOPIC]** I can only assist with matters related to Pakistani law.' and STOP.\n"
