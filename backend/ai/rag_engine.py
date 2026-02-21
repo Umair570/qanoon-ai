@@ -4,31 +4,32 @@ import concurrent.futures
 from tqdm import tqdm  # Progress bar
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEndpointEmbeddings
-from langchain_pinecone import PineconeVectorStore # UPDATED
+from langchain_pinecone import PineconeVectorStore 
 from langchain_core.documents import Document
 from dotenv import load_dotenv
-from pinecone import Pinecone # UPDATED
+from pinecone import Pinecone 
 
 # Load environment variables
 load_dotenv()
 
 # --- CONFIGURATION ---
+# Path used only for local building/re-indexing
 JSON_FILE_PATH = os.path.join(os.getcwd(), "backend", "data", "processed", "legal_data_final.json")
-INDEX_NAME = "qanoon-ai" # Must match your Pinecone Dashboard
+INDEX_NAME = "qanoon-ai" 
 
 class RAGEngine:
     def __init__(self):
         print("🔌 Initializing Cloud Brain (Hugging Face + Pinecone)...")
         
         hf_token = os.getenv("HF_TOKEN")
-        pc_api_key = os.getenv("PINECONE_API_KEY") # NEW
+        pc_api_key = os.getenv("PINECONE_API_KEY")
 
         if not hf_token:
             print("⚠️ WARNING: HF_TOKEN not found!")
         if not pc_api_key:
             print("⚠️ WARNING: PINECONE_API_KEY not found!")
 
-        # Embeddings API
+        # API-BASED EMBEDDINGS (Memory Safe for Render)
         self.embeddings = HuggingFaceEndpointEmbeddings(
             model="sentence-transformers/all-MiniLM-L6-v2",
             huggingfacehub_api_token=hf_token
@@ -38,10 +39,10 @@ class RAGEngine:
         self.load_index()
 
     def load_index(self):
-        """Connects to the existing Pinecone index."""
+        """Connects to the existing cloud index without re-uploading."""
         try:
-            # UPDATED: Direct connection to Pinecone Cloud instead of local disk
-            self.db = PineconeVectorStore(
+            # Connect to existing index already populated with 3,019 chunks
+            self.db = PineconeVectorStore.from_existing_index(
                 index_name=INDEX_NAME,
                 embedding=self.embeddings,
                 pinecone_api_key=os.getenv("PINECONE_API_KEY")
@@ -51,7 +52,7 @@ class RAGEngine:
             print(f"⚠️ Error connecting to cloud memory: {e}")
 
     def process_single_entry(self, entry):
-        """Fast JSON extraction."""
+        """Fast extraction for JSON records."""
         try:
             text_content = entry.get('text') or entry.get('content') or str(entry)
             title = entry.get('title') or entry.get('section') or "Legal Document"
@@ -59,7 +60,6 @@ class RAGEngine:
             doc_type = entry.get('type') or "Act"
 
             if text_content:
-                # Optimized metadata for Pinecone
                 return Document(
                     page_content=text_content, 
                     metadata={
@@ -73,10 +73,10 @@ class RAGEngine:
         return None
 
     def build_index_from_json(self):
-        """Extreme speed training with batching and cloud upsert."""
+        """Extreme speed local build and cloud upsert."""
         print(f"🏗️  Loading data from: {JSON_FILE_PATH}")
         if not os.path.exists(JSON_FILE_PATH):
-            print(f"❌ Error: File not found.")
+            print(f"❌ Error: JSON file not found at {JSON_FILE_PATH}")
             return
 
         with open(JSON_FILE_PATH, 'r', encoding='utf-8') as f:
@@ -95,18 +95,16 @@ class RAGEngine:
         total_chunks = len(final_docs)
         print(f"🚀 Pushing {total_chunks} chunks to Pinecone...")
 
-        # UPDATED: Use smaller batch size for Cloud stability (avoid 2MB/4MB errors)
+        # Small batches for API stability
         batch_size = 50 
         
-        # Initialize index
+        # Initialize Pinecone Client
         pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-        # Clear existing data if you want a fresh start (Optional)
-        # pc.Index(INDEX_NAME).delete(delete_all=True)
 
         for i in tqdm(range(0, total_chunks, batch_size), desc="Cloud Upload Progress"):
             batch = final_docs[i : i + batch_size]
             
-            # Metadata Safety: Truncate text if it somehow exceeds 40KB (rare for 1k chunks)
+            # Ensure metadata stays under 40KB per chunk
             for doc in batch:
                 if len(doc.page_content.encode('utf-8')) > 38000:
                     doc.page_content = doc.page_content[:38000]
@@ -118,13 +116,15 @@ class RAGEngine:
             else:
                 self.db.add_documents(batch)
 
-        print("✅ SUCCESS! 100% of data is now in the Pinecone Cloud.")
+        print("✅ SUCCESS! Cloud Index is now built.")
 
-    def search(self, query, k=5): # Defaulted to 5 for better cloud retrieval
+    def search(self, query, k=5):
+        """Cloud similarity search."""
         if not self.db:
-            print("❌ Search failed: Database not initialized.")
+            print("❌ Search failed: Database not connected.")
             return []
         try:
+            # Query Pinecone
             results = self.db.similarity_search(query, k=k)
             return [
                 {
@@ -136,8 +136,8 @@ class RAGEngine:
             print(f"⚠️ Search error: {e}")
             return []
 
-# --- THE WINDOWS SAFETY GUARD ---
+# --- WINDOWS SAFETY GUARD ---
 if __name__ == "__main__":
+    # Create engine and build ONLY if run directly
     rag = RAGEngine()
-    # Only run this if you need to re-upload everything
     # rag.build_index_from_json()

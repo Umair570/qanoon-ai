@@ -8,19 +8,21 @@ from dotenv import load_dotenv
 
 from langchain_groq import ChatGroq
 
+# Ensure local imports work correctly
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
 # --- API KEYS & CONFIG ---
 groq_api_key = os.getenv("GROQ_API_KEY")
-pinecone_api_key = os.getenv("PINECONE_API_KEY") # NEW: Added for cloud database
-pinecone_index = "qanoon-ai"                    # NEW: Your index name
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_index = "qanoon-ai"
 
 if not groq_api_key:
-    print("❌ ERROR: GROQ_API_KEY not found in .env file.")
+    print("❌ ERROR: GROQ_API_KEY not found in environment.")
 if not pinecone_api_key:
-    print("❌ ERROR: PINECONE_API_KEY not found in .env file.")
+    print("❌ ERROR: PINECONE_API_KEY not found in environment.")
 
+# Initialize LLM
 try:
     llm = ChatGroq(
         temperature=0.2, 
@@ -34,32 +36,33 @@ except Exception as e:
 print("🔌 Initializing Pinecone Cloud Brain on Startup...")
 rag = None
 try:
-    # UPDATED: Assuming your RAGEngine class is updated to use Pinecone
+    # This calls your RAGEngine class
     from backend.ai.rag_engine import RAGEngine
     rag = RAGEngine()
     
-    print("🔥 Forcing Hugging Face API to wake up (This may take a minute)...")
+    # Render Memory-Safe Wakeup: Ping the API instead of loading a local model
+    print("🔥 Forcing Cloud Embedding API to wake up...")
     is_awake = False
     while not is_awake:
         try:
-            # Pings the embedding model to ensure the Hugging Face endpoint is active
             rag.embeddings.embed_query("wake up")
             is_awake = True
-            print("✅ SUCCESS: Pinecone + Hugging Face are fully awake and ready!")
+            print("✅ SUCCESS: Cloud Memory is fully awake!")
         except Exception:
-            print("⏳ Hugging Face is still booting. Knocking again in 5 seconds...")
+            print("⏳ Cloud API is still booting. Knocking again in 5 seconds...")
             time.sleep(5)
             
 except Exception as e:
     print(f"❌ ERROR: Cloud AI Memory Failed - {e}")
 
+# Keep-alive heartbeat (Critical for Hugging Face Inference API)
 def keep_brain_awake():
     while True:
         time.sleep(300) 
         if rag:
             try:
                 rag.embeddings.embed_query("heartbeat ping")
-                print("💓 [Heartbeat] Sent signal to keep Hugging Face awake.")
+                print("💓 [Heartbeat] Sent signal to keep Cloud Brain awake.")
             except Exception:
                 pass 
 
@@ -74,7 +77,6 @@ def generate_groq_response(prompt, max_retries=3):
                 if chunk.content:
                     yield chunk.content
             return 
-
         except Exception as e:
             error_msg = str(e).lower()
             if '429' in error_msg or 'rate_limit' in error_msg:
@@ -86,7 +88,7 @@ def generate_groq_response(prompt, max_retries=3):
 
     yield (
         "<h3>⚠️ Daily Limit Reached</h3>"
-        "Qanoon AI has reached its maximum server capacity today. Please try again tomorrow!"
+        "Qanoon AI has reached its maximum server capacity. Please try again tomorrow!"
     )
 
 @app.route('/')
@@ -98,25 +100,24 @@ def consult():
     user_text = data.get('text', '')
     
     print(f"🔍 Analyzing: {user_text}")
-    
     context = "No specific legal document found."
     
     if rag:
         try:
-            # The rag.search function now pulls from Pinecone via your RAGEngine
+            # Query the cloud index
             docs = rag.search(user_text, k=5)
             if docs:
                 context = ""
                 for doc in docs:
-                    # UPDATED: Matches the metadata structure used in Pinecone migration
                     title = doc.get('title', 'Unknown Source')
                     text = doc.get('text', 'No content available')
                     context += f"\n--- SOURCE: {title} ---\n{text}\n"
         except Exception as e:
             def generic_error_message():
-                yield f"<h3>⚠️ Memory Search Error</h3>An error occurred while searching the cloud database: {str(e)}"
+                yield f"<h3>⚠️ Memory Search Error</h3>Cloud retrieval failed: {str(e)}"
             return Response(stream_with_context(generic_error_message()), mimetype='text/plain')
 
+    # THE STRICT RAG (ANTI-HALLUCINATION) PROMPT
     system_prompt = (
         "You are Qanoon AI, an expert legal advisor for Pakistani law.\n"
         "You MUST base your answer ENTIRELY on the provided DATA block below. You are strictly forbidden from using outside knowledge to guess an answer.\n\n"
@@ -125,16 +126,16 @@ def consult():
         "2. If the provided DATA does NOT contain the answer, respond EXACTLY with: '🛑 [REJECTED] I am sorry, but I do not have specific information regarding this in my current legal records.'\n"
         "3. If the query is abusive or unrelated to law, respond EXACTLY with: '🛑 [REJECTED] I am Qanoon AI, a professional legal assistant. I can only answer questions related to Pakistani law.'\n\n"
         "💬 FORMATTING:\n"
-        "- Answer concisely (max 3-4 sentences).\n"
-        "- Use short bullet points for rules/penalties.\n"
+        "- Answer concisely in a natural, conversational tone (max 3-4 sentences).\n"
+        "- Use short bullet points if there are multiple rules or penalties.\n"
         "- **Bold** the actual penalties, prison times, or fine amounts.\n"
-        "- Always end your response on a new line with: '📖 Reference: [Document Title]' based on the SOURCE provided in the DATA.\n"
+        "- Always end your response on a new line with: '📖 Reference: [Document Title]' using the SOURCE provided in the DATA.\n"
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
-
     return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
 
+# Lawyers database logic remains unchanged
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")
 
 @app.route('/lawyers', methods=['GET'])
@@ -149,7 +150,7 @@ def get_lawyers():
                 all_lawyers = json.load(f)
         else:
             return jsonify([]) 
-    except Exception as e:
+    except Exception:
         return jsonify([])
 
     if not all_lawyers:
@@ -170,4 +171,5 @@ def get_lawyers():
     return jsonify(filtered_lawyers)
 
 if __name__ == "__main__":
+    # Render deployment port binding
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
