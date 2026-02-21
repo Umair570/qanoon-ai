@@ -27,13 +27,12 @@ try:
     llm = ChatGroq(
         temperature=0.2, 
         model_name="llama-3.1-8b-instant", 
-        api_key=groq_api_key
+        api_key=groq_api_key,
+        max_tokens=1024  # 👈 Prevents the "413 Request Too Large" crash
     )
     print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
     print(f"❌ ERROR: Groq Initialization Failed - {e}")
-
-print("🔌 Initializing Pinecone Cloud Brain on Startup...")
 rag = None
 try:
     # This calls your RAGEngine class
@@ -70,26 +69,47 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 
 app = Flask(__name__)
 
-def generate_groq_response(prompt, max_retries=3):
-    for attempt in range(max_retries):
-        try:
-            for chunk in llm.stream(prompt):
-                if chunk.content:
-                    yield chunk.content
-            return 
-        except Exception as e:
-            error_msg = str(e).lower()
-            if '429' in error_msg or 'rate_limit' in error_msg:
-                wait_time = (attempt + 1) * 5 
-                time.sleep(wait_time)
-            else:
-                yield f"⚠️ API Error: {str(e)}"
-                return
+def generate_groq_response(prompt):
+    try:
+        for chunk in llm.stream(prompt):
+            if chunk.content:
+                yield chunk.content
+        return 
 
-    yield (
-        "<h3>⚠️ Daily Limit Reached</h3>"
-        "Qanoon AI has reached its maximum server capacity. Please try again tomorrow!"
-    )
+    except Exception as e:
+        error_msg = str(e).lower()
+        
+        # Catch Rate Limits (429)
+        if '429' in error_msg or 'rate_limit' in error_msg:
+            if 'tokens per minute' in error_msg or 'tpm' in error_msg or 'per minute' in error_msg:
+                yield (
+                    "\n\n### ⏳ Whoa, Slow Down!\n"
+                    "**[Per-Minute Limit Reached]**\n"
+                    "I am currently analyzing a massive amount of legal documents for you! "
+                    "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
+                )
+            else:
+                yield (
+                    "\n\n### 🌙 Time to Rest!\n"
+                    "**[Daily Server Limit Reached]**\n"
+                    "Qanoon AI has reached its maximum server capacity for today. "
+                    "Please come back tomorrow for more elite legal assistance! 🏛️"
+                )
+            return
+            
+        # Catch Token Overload (413)
+        elif '413' in error_msg or 'request too large' in error_msg:
+            yield (
+                "\n\n### ✂️ Query Too Complex\n"
+                "Your question required reading too many laws at once! "
+                "Please ask a shorter, more specific legal question. ⚖️"
+            )
+            return
+            
+        # Generic fallback
+        else:
+            yield f"\n\n### ⚠️ System Interruption\nAn unexpected error occurred: {str(e)}"
+            return
 
 @app.route('/')
 def home(): return render_template('index.html')
@@ -103,7 +123,7 @@ def consult():
     if rag:
         try:
             # RAG still fetches data, but the LLM will decide whether to use it or ignore it.
-            docs = rag.search(user_text, k=2) 
+            docs = rag.search(user_text, k=3) 
             if docs:
                 for doc in docs:
                     # 'title' is passed for context, but the prompt forbids showing it to the user
