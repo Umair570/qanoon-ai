@@ -104,14 +104,16 @@ def consult():
     
     if rag:
         try:
-            # Query the cloud index
-            docs = rag.search(user_text, k=3)
+            # Re-fetch docs with lower k
+            docs = rag.search(user_text, k=2) 
             if docs:
                 context = ""
                 for doc in docs:
                     title = doc.get('title', 'Unknown Source')
-                    text = doc.get('text', 'No content available')
-                    context += f"\n--- SOURCE: {title} ---\n{text}\n"
+                    # LIMIT: Only take the first 1,500 characters of each result
+                    # This keeps your total tokens way below the 6,000 limit.
+                    text_snippet = doc.get('text', '')[:1500] 
+                    context += f"\n--- SOURCE: {title} ---\n{text_snippet}\n"
         except Exception as e:
             def generic_error_message():
                 yield f"<h3>⚠️ Memory Search Error</h3>Cloud retrieval failed: {str(e)}"

@@ -118,13 +118,10 @@ class RAGEngine:
 
         print("✅ SUCCESS! Cloud Index is now built.")
 
-    def search(self, query, k=3):
-        """Cloud similarity search."""
+    def search(self, query, k=2): # Reduced k from 5 to 2
         if not self.db:
-            print("❌ Search failed: Database not connected.")
             return []
         try:
-            # Query Pinecone
             results = self.db.similarity_search(query, k=k)
             return [
                 {
@@ -135,7 +132,7 @@ class RAGEngine:
         except Exception as e:
             print(f"⚠️ Search error: {e}")
             return []
-
+        
 # --- WINDOWS SAFETY GUARD ---
 if __name__ == "__main__":
     # Create engine and build ONLY if run directly
