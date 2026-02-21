@@ -21,7 +21,7 @@ if not groq_api_key:
 # Initialize LLM with Groq
 try:
     llm = ChatGroq(
-        model_name="llama-3.3-70b-versatile", 
+        model_name="llama3-70b-8192", 
         temperature=0.0,  
         api_key=groq_api_key,
         max_tokens=1024,
