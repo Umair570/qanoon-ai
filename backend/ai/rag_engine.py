@@ -118,7 +118,7 @@ class RAGEngine:
 
         print("✅ SUCCESS! Cloud Index is now built.")
 
-    def search(self, query, k=5):
+    def search(self, query, k=3):
         """Cloud similarity search."""
         if not self.db:
             print("❌ Search failed: Database not connected.")

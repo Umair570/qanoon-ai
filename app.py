@@ -105,7 +105,7 @@ def consult():
     if rag:
         try:
             # Query the cloud index
-            docs = rag.search(user_text, k=5)
+            docs = rag.search(user_text, k=3)
             if docs:
                 context = ""
                 for doc in docs:
