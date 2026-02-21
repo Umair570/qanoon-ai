@@ -25,10 +25,10 @@ if not pinecone_api_key:
 # Initialize LLM
 try:
     llm = ChatGroq(
-        temperature=0.2, 
-        model_name="llama-3.1-8b-instant", 
+        temperature=0.0,  # 👈 THE FIX: 0.0 means ZERO creativity/hallucination. Just facts.
+        model_name="llama-3.3-70b-versatile", # 👈 THE FIX: Double the TPM limit (12,000)
         api_key=groq_api_key,
-        max_tokens=1024  # 👈 Prevents the "413 Request Too Large" crash
+        max_tokens=1024 
     )
     print("⚡ SUCCESS: Groq AI Model Ready!")
 except Exception as e:
