@@ -6,6 +6,11 @@ import threading
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain.globals import set_llm_cache
+from langchain_community.cache import InMemoryCache
+
+# 🧠 Saves API calls by remembering identical queries
+set_llm_cache(InMemoryCache())
 
 
 # Ensure local imports work correctly
