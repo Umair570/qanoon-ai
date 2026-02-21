@@ -18,7 +18,7 @@ groq_api_key = os.getenv("GROQ_API_KEY")
 if not groq_api_key:
     print("❌ ERROR: GROQ_API_KEY not found in environment.")
 
-# Initialize LLM with Groq
+# Initialize LLM with Groq (Locked to High Accuracy 70B Model)
 try:
     llm = ChatGroq(
         model_name="llama-3.3-70b-versatile", 
@@ -78,7 +78,7 @@ def generate_groq_response(prompt):
                 "\n\n### ⏳ Whoa, Slow Down!\n"
                 "**[Per-Minute Limit Reached]**\n"
                 "I am currently analyzing a massive amount of legal documents for you! "
-                "Please wait **60 seconds**, take a deep breath, and ask your question again. 🕰️"
+                "Please wait **60 seconds**, and ask your question again. 🕰️"
             )
             return 
         elif '413' in error_msg or 'request too large' in error_msg:
@@ -99,7 +99,7 @@ def home(): return render_template('index.html')
 def consult():
     data = request.json
     user_text = data.get('text', '').strip()
-    user_lang = data.get('lang', 'en') # Detect language
+    user_lang = data.get('lang', 'en')
 
     context = ""
     if rag:
@@ -112,28 +112,27 @@ def consult():
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # DYNAMIC LANGUAGE INSTRUCTION
-    lang_instruction = ""
-    # DYNAMIC LANGUAGE INSTRUCTION
+    # UPDATED DYNAMIC LANGUAGE INSTRUCTION
     if user_lang == 'ur':
         lang_instruction = (
-            "CRITICAL: The user prefers URDU. You MUST respond ENTIRELY in Urdu, including headers. "
+            "CRITICAL: User prefers URDU. Translate EVERYTHING into formal 'Adalti' Urdu. "
             "Use these Urdu headers exactly:\n"
-            "### 🧠 نیت کا جائزہ (Intent Evaluation)\n"
-            "### ⚖️ قانونی تجزیہ (Legal Analysis)\n"
-            "### 📜 قانونی حوالہ (Legal Authority)\n\n"
-            "Keep legal Section numbers in English digits (e.g., Section 302). "
-            "The rest of the text must be professional 'Adalti' Urdu."
+            "### ⚖️ قانونی تجزیہ\n"
+            "### 📜 قانونی حوالہ\n\n"
+            "Keep Section numbers in English digits (e.g., Section 380). "
+            "Do NOT show 'Intent Evaluation' to the user. Provide analysis directly."
         )
     else:
-        lang_instruction = "The user prefers ENGLISH. Provide headers and analysis in English."
+        lang_instruction = (
+            "User prefers ENGLISH. Use these headers:\n"
+            "### ⚖️ Legal Analysis\n"
+            "### 📜 Legal Authority\n\n"
+            "Do NOT show 'Intent Evaluation' to the user. Provide analysis directly."
+        )
 
     system_prompt = (
         f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}\n\n"
-        "### 🧠 1. INTENT EVALUATION:\n"
-        "Evaluate the intent. If it is a greeting or general chat, respond warmly in the chosen language.\n"
-        "If it is off-topic, respond with the [OFF-TOPIC] warning in the chosen language.\n\n"
-        "### 🏛️ 2. VISUAL STYLE & CITATION RULES:\n"
+        "### 🏛️ VISUAL STYLE & CITATION RULES:\n"
         "- Base analysis STRICTLY on the DATA provided.\n"
         "- If DATA is missing, state '🛑 [DATA MISSING]' in the chosen language.\n"
         "- Structure with clear headers (###), bold text, and bullet points.\n"
