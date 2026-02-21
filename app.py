@@ -114,14 +114,19 @@ def consult():
 
     # DYNAMIC LANGUAGE INSTRUCTION
     lang_instruction = ""
+    # DYNAMIC LANGUAGE INSTRUCTION
     if user_lang == 'ur':
         lang_instruction = (
-            "CRITICAL: The user prefers URDU. You MUST respond in professional, accurate, and formal 'Adalti' Urdu. "
-            "Keep legal Section numbers in English digits (e.g., Section 302) but translate the explanation perfectly. "
-            "Ensure the Urdu is natural and authoritative."
+            "CRITICAL: The user prefers URDU. You MUST respond ENTIRELY in Urdu, including headers. "
+            "Use these Urdu headers exactly:\n"
+            "### 🧠 نیت کا جائزہ (Intent Evaluation)\n"
+            "### ⚖️ قانونی تجزیہ (Legal Analysis)\n"
+            "### 📜 قانونی حوالہ (Legal Authority)\n\n"
+            "Keep legal Section numbers in English digits (e.g., Section 302). "
+            "The rest of the text must be professional 'Adalti' Urdu."
         )
     else:
-        lang_instruction = "The user prefers ENGLISH. Provide a professional legal response in English."
+        lang_instruction = "The user prefers ENGLISH. Provide headers and analysis in English."
 
     system_prompt = (
         f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}\n\n"

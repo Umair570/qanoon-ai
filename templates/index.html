@@ -34,14 +34,22 @@
             background: rgba(34, 197, 94, 0.1);
             color: var(--neon-green);
             border: 1px solid var(--neon-green);
-            padding: 5px 12px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            padding: 8px 18px; /* Increased padding for better shape */
+            border-radius: 25px;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: 0.3s;
-            font-weight: bold;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 80px; /* Ensures the button doesn't shrink */
         }
-        .lang-btn:hover { background: var(--neon-green); color: black; }
+        .lang-btn:hover { 
+            background: var(--neon-green); 
+            color: black; 
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+        }
 
         .lawyer-header { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-muted); margin-bottom: 15px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
         .lawyer-list { flex: 1; overflow-y: auto; }
