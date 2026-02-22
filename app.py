@@ -22,9 +22,8 @@ try:
         model="gemini-2.5-flash", 
         temperature=0.0,  
         api_key=gemini_api_key,
-        max_tokens=4096,
+        max_tokens=4096, # 🚀 Output ceiling raised to prevent mid-sentence freezing
         max_retries=1,
-        # 🐛 THE FIX: Disable Google's strict safety filters for legal terminology
         safety_settings={
             "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
             "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
@@ -72,7 +71,7 @@ app = Flask(__name__)
 def generate_gemini_response(prompt):
     try:
         for chunk in llm.stream(prompt):
-            # 📊 THE TOKEN MONITOR: Catches Google's official token receipt on the final chunk
+            # 📊 THE TOKEN MONITOR
             if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
                 usage = chunk.usage_metadata
                 in_tokens = usage.get('input_tokens', 0)
@@ -114,8 +113,6 @@ def consult():
             docs = rag.search(user_text, k=20) 
             if docs:
                 for doc in docs:
-                    # ⚖️ THE BALANCED FIX: Cap at 2000 characters to save tokens 
-                    # while ensuring the AI gets the full legal paragraph!
                     if hasattr(doc, 'page_content'):
                         text_snippet = doc.page_content[:2500]
                     elif isinstance(doc, dict):
@@ -127,50 +124,47 @@ def consult():
         except Exception as e:
              return Response(f"Memory Error: {str(e)}", mimetype='text/plain')
 
-    # 🛡️ THE FIXED PROMPT GATEKEEPER 
+    # 🛡️ THE HYBRID PROMPT: Never says [DATA MISSING] again!
     if user_lang == 'ur':
         lang_instruction = (
             "CRITICAL INSTRUCTION: User prefers URDU. Write ENTIRE response in formal 'Adalti' (Legal) Urdu.\n\n"
-            "### 🧠 STEP 1: INTENT EVALUATION (DO NOT print this step)\n"
+            "### 🧠 STEP 1: INTENT EVALUATION\n"
             "- If query is a greeting: Respond ONLY with 'السلام علیکم! میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟' and STOP.\n"
             "- If query is abusive/off-topic: Respond ONLY with '🛑 **[OFF-TOPIC]** میں صرف پاکستانی قانون سے متعلق سوالات کے جوابات دے سکتا ہوں۔' and STOP.\n"
             "- If valid legal question: Proceed to Step 2.\n\n"
-            "### 🏛️ STEP 2: LEGAL FORMATTING (For valid questions ONLY)\n"
-            "- RULE 1: DO NOT include greetings here. Start directly with the analysis.\n"
-            "- RULE 2: NEVER break character. NEVER use phrases like 'according to the provided text', 'in the data', or 'مہیا کیے گئے متن کے مطابق'. State the law authoritatively as an expert.\n"
+            "### 🏛️ STEP 2: LEGAL FORMATTING\n"
+            "- RULE 1: NEVER mention 'provided data', 'context', 'مہیا کردہ معلومات', or 'متن'. Act as a human lawyer speaking directly.\n"
+            "- RULE 2: If the DATA is empty or irrelevant, seamlessly use your internal knowledge of Pakistani Law to answer the question. NEVER say the data is missing.\n"
             "- RULE 3: Use EXACTLY these headers:\n"
             "### ⚖️ قانونی تجزیہ\n"
-            "(Your Urdu analysis here using bullet points. Keep Section numbers in English digits, e.g., Section 302)\n"
+            "(Detailed Urdu analysis in bullet points. Keep Section numbers in English digits, e.g., Section 302)\n"
             "### 📜 قانونی حوالہ\n"
-            "(List specific Sections here)\n"
-            "- RULE 4: DO NOT add any extra text or citation lines at the very end. The 'قانونی حوالہ' section is your conclusion."
+            "(List specific Sections/Acts here. If using internal knowledge, list the correct Pakistani laws, e.g., Income Tax Ordinance, 2001.)\n"
+            "- RULE 4: Stop immediately after the citations."
         )
     else:
         lang_instruction = (
             "CRITICAL INSTRUCTION: User prefers ENGLISH. Write ENTIRE response in professional English.\n\n"
-            "### 🧠 STEP 1: INTENT EVALUATION (DO NOT print this step)\n"
+            "### 🧠 STEP 1: INTENT EVALUATION\n"
             "- If query is a greeting: Respond ONLY with 'Greetings! I am Qanoon AI, a specialized legal assistant for Pakistani law. How can I assist you today?' and STOP.\n"
             "- If query is abusive/off-topic: Respond ONLY with '🛑 **[OFF-TOPIC]** I can only assist with matters related to Pakistani law.' and STOP.\n"
             "- If valid legal question: Proceed to Step 2.\n\n"
-            "### 🏛️ STEP 2: LEGAL FORMATTING (For valid questions ONLY)\n"
-            "- RULE 1: DO NOT include greetings here. Start directly with the analysis.\n"
-            "- RULE 2: NEVER break character. NEVER use phrases like 'according to the provided text', 'in the data', or 'the documents state'. State the law authoritatively as an expert.\n"
+            "### 🏛️ STEP 2: LEGAL FORMATTING\n"
+            "- RULE 1: NEVER mention 'provided data', 'context', or 'documents'. Act as a human lawyer speaking directly.\n"
+            "- RULE 2: If the DATA is empty or irrelevant, seamlessly use your internal knowledge of Pakistani Law to answer the question. NEVER say the data is missing.\n"
             "- RULE 3: Use EXACTLY these headers:\n"
             "### ⚖️ Legal Analysis\n"
-            "(Your English analysis here using bullet points)\n"
+            "(Detailed English analysis in bullet points.)\n"
             "### 📜 Legal Authority\n"
-            "(List specific Sections here)\n"
-            "- RULE 4: DO NOT add any extra text or citation lines at the very end. The 'Legal Authority' section is your conclusion."
+            "(List specific Sections/Acts here. If using internal knowledge, cite the correct Pakistani laws.)\n"
+            "- RULE 4: Stop immediately after the citations."
         )
 
     system_prompt = (
-        f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}\n\n"
-        "### DATA RULES:\n"
-        "- Base analysis primarily on the DATA provided, but do not mention the data itself.\n"
-        "- If the answer absolutely cannot be found in the DATA, state '🛑 [DATA MISSING]' in the chosen language."
+        f"You are Qanoon AI, an elite Legal Consultant for Pakistani Law.\n{lang_instruction}"
     )
 
-    full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
+    full_prompt = f"{system_prompt}\n\n### DATA:\n{context}\n\n### QUERY: {user_text}"
     return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
 
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")

@@ -62,7 +62,6 @@
         .msg { padding: 15px 20px; border-radius: 16px; max-width: 75%; line-height: 1.8; font-size: 1rem; animation: slideUp 0.3s ease; position: relative; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Flexbox handles RTL automatically. Do not manually override these in .rtl mode! */
         .msg.bot { background: #18181b; border: 1px solid var(--border); color: #d4d4d8; align-self: flex-start; }
         .msg.user { align-self: flex-end; background: var(--neon-green); color: black; font-weight: 500; }
 
@@ -165,7 +164,6 @@
                 ]
             },
             'ur': {
-                // Fixed punctuation grouping so it stays on the right side of the text in RTL
                 welcome: '<span dir="rtl"><strong>السلام علیکم!</strong> 👋<br>میں قانون اے آئی ہوں، آپ کا قانونی معاون۔ میں آپ کی کیا مدد کر سکتا ہوں؟<br>نمونہ سوالات:</span>',
                 placeholder: 'اپنا قانونی مسئلہ یہاں لکھیں...',
                 loading: 'قانونی دستاویزات کا تجزیہ کیا جا رہا ہے...',
@@ -281,18 +279,27 @@
             }
         }
 
-        function handleEnter(event) { if (event.key === 'Enter') sendUserMessage(); }
+        // Fix 1: Stop accidental rapid-firing via the enter key
+        function handleEnter(event) { 
+            if (event.key === 'Enter') {
+                event.preventDefault(); 
+                sendUserMessage(); 
+            }
+        }
         function sendText(text) { document.getElementById('userInput').value = text; sendUserMessage(); }
 
         let isWaitingForResponse = false;
 
         async function sendUserMessage() {
+            // Fix 2: Strictly bounce any double-clicks
             if (isWaitingForResponse) return;
+            
             const input = document.getElementById('userInput');
             const submitBtn = document.getElementById('sendBtn');
             const text = input.value.trim();
             if (!text) return;
 
+            // Lock the gates!
             isWaitingForResponse = true;
             isQueryRejected = false; 
             input.disabled = true;
@@ -331,7 +338,8 @@
                     fullText += chunk;
                     
                     let displayHTML = fullText;
-                    const rejectionTriggers = ["[REJECTED]", "[OFF-TOPIC]", "[DATA MISSING]"];
+                    // Fix 3: Removed DATA MISSING from the rejection list so it never fails a query
+                    const rejectionTriggers = ["[REJECTED]", "[OFF-TOPIC]"];
                     const isFlagged = rejectionTriggers.some(trigger => displayHTML.includes(trigger));
 
                     if (isFlagged) {
@@ -350,6 +358,7 @@
                 document.getElementById('loading').style.display = 'none';
                 botDiv.innerHTML = "⚠️ Error: Backend not responding.";
             } finally {
+                // Unlock the gates once the AI finishes typing
                 isWaitingForResponse = false;
                 input.disabled = false;
                 submitBtn.disabled = false;
