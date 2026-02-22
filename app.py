@@ -22,7 +22,7 @@ try:
         model="gemini-2.5-flash", 
         temperature=0.0,  
         api_key=gemini_api_key,
-        max_tokens=1024,
+        max_tokens=4096,
         max_retries=1,
         # 🐛 THE FIX: Disable Google's strict safety filters for legal terminology
         safety_settings={
