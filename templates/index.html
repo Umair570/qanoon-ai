@@ -291,7 +291,7 @@
         let isWaitingForResponse = false;
 
         async function sendUserMessage() {
-            // Bounce any double-clicks while waiting
+            // Fix 2: Strictly bounce any double-clicks
             if (isWaitingForResponse) return;
             
             const input = document.getElementById('userInput');
@@ -313,7 +313,7 @@
             const chatBox = document.getElementById('chatBox');
             const botDiv = document.createElement('div');
             botDiv.className = 'msg bot';
-            botDiv.innerHTML = "⚖️ <span style='font-style:italic;'>Analyzing laws and preparing your consultation...</span>"; 
+            botDiv.innerHTML = "..."; 
             chatBox.appendChild(botDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
 
@@ -326,14 +326,19 @@
                     body: JSON.stringify({ text: text, lang: currentLang })
                 });
 
-                // NEW: Get the JSON object instead of a stream
-                const data = await response.json();
                 document.getElementById('loading').style.display = 'none';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = "";
 
-                if (data.answer) {
-                    let displayHTML = data.answer;
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    fullText += chunk;
                     
-                    // Check for Rejection Flags
+                    let displayHTML = fullText;
+                    // Fix 3: Removed DATA MISSING from the rejection list so it never fails a query
                     const rejectionTriggers = ["[REJECTED]", "[OFF-TOPIC]"];
                     const isFlagged = rejectionTriggers.some(trigger => displayHTML.includes(trigger));
 
@@ -343,22 +348,17 @@
                         if (lList) lList.innerHTML = `<div style="text-align:center; color:#ef4444; margin-top:20px;">${translations[currentLang].queryRejected}</div>`;
                     }
 
-                    // Formatting Markdown-like syntax
                     displayHTML = displayHTML.replace(/\*\*(.*?)\*\*/g, '<strong style="color: var(--neon-green);">$1</strong>');
                     displayHTML = displayHTML.replace(/\n/g, '<br>');
 
                     botDiv.innerHTML = displayHTML;
-                } else if (data.error) {
-                    botDiv.innerHTML = "⚠️ AI Error: " + data.error;
+                    chatBox.scrollTop = chatBox.scrollHeight;
                 }
-                
-                chatBox.scrollTop = chatBox.scrollHeight;
-
             } catch (error) {
                 document.getElementById('loading').style.display = 'none';
-                botDiv.innerHTML = "⚠️ Error: Connection to Qanoon AI lost.";
+                botDiv.innerHTML = "⚠️ Error: Backend not responding.";
             } finally {
-                // Unlock the UI
+                // Unlock the gates once the AI finishes typing
                 isWaitingForResponse = false;
                 input.disabled = false;
                 submitBtn.disabled = false;

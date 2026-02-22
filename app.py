@@ -82,47 +82,47 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 app = Flask(__name__)
 
 def generate_gemini_response(prompt):
-    """Loops through GEMINI_KEYS if a rate limit is hit."""
+    # This loop tries each key you've provided in GEMINI_KEYS
     for i, key in enumerate(GEMINI_KEYS):
         try:
-            # Initialize a temporary LLM with the current key from the list
+            # Initialize the LLM specifically for this key
             current_llm = create_llm(key)
             
-            # Using .invoke() for a single solid response (No streaming)
-            response = current_llm.invoke(prompt)
-            
-            # 📊 THE TOKEN MONITOR (Updated for .invoke)
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                usage = response.usage_metadata
-                in_tokens = usage.get('input_tokens', 0)
-                out_tokens = usage.get('output_tokens', 0)
-                total_tokens = usage.get('total_tokens', 0)
-                
-                print("\n" + "="*50)
-                print(f"📊 [TOKEN MONITOR - KEY {i+1}]")
-                print(f"📥 Input (Reading PDFs) : {in_tokens} tokens")
-                print(f"📤 Output (Writing Urdu): {out_tokens} tokens")
-                print(f"📈 Total for this query : {total_tokens} tokens")
-                print("="*50 + "\n")
+            for chunk in current_llm.stream(prompt):
+                # 📊 THE TOKEN MONITOR
+                if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
+                    usage = chunk.usage_metadata
+                    in_tokens = usage.get('input_tokens', 0)
+                    out_tokens = usage.get('output_tokens', 0)
+                    total_tokens = usage.get('total_tokens', 0)
+                    
+                    print("\n" + "="*50)
+                    print(f"📊 [LIVE TOKEN MONITOR - KEY {i+1}]")
+                    print(f"📥 Input (Reading PDFs) : {in_tokens} tokens")
+                    print(f"📤 Output (Writing Urdu): {out_tokens} tokens")
+                    print(f"📈 Total for this query : {total_tokens} tokens")
+                    print("="*50 + "\n")
 
-            # Return the content as a single yield since the route expects a generator
-            if response.content:
-                yield response.content
-            return  # Exit the function successfully
+                if chunk.content:
+                    yield chunk.content
+            
+            # If the stream finishes successfully, exit the function
+            return  
 
         except Exception as e:
             error_msg = str(e).lower()
-            # If the error is a Rate Limit (429), try the next key
+            # If rate limited (429), log and move to the next key
             if '429' in error_msg or 'rate_limit' in error_msg or 'resource_exhausted' in error_msg:
                 print(f"⚠️ Key {i+1} limit reached. Switching to next key...")
                 continue 
             else:
-                # For any other error, yield the error and stop
+                # Keep your original error yield response
                 yield f"\n\n### ⚠️ System Interruption\nAn unexpected error occurred: {str(e)}"
                 return
 
-    # If the loop finishes without returning, all keys failed
-    yield "\n\n### ⏳ All Limits Reached\nPlease wait 60 seconds. All provided API keys are currently exhausted. If still fails then try again tomorrow"
+    # Keep your original limit reached yield response if ALL keys fail
+    yield "\n\n### ⏳ Limit Reached\nPlease wait 60 seconds, take a deep breath, and ask again. If still fails then daily limit is reached. Try again tomorrow."
+
 @app.route('/')
 def home(): return render_template('index.html')
 
