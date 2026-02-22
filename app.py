@@ -111,7 +111,7 @@ def consult():
     context = ""
     if rag:
         try:
-            docs = rag.search(user_text, k=8) 
+            docs = rag.search(user_text, k=20) 
             if docs:
                 for doc in docs:
                     # ⚖️ THE BALANCED FIX: Cap at 2000 characters to save tokens 

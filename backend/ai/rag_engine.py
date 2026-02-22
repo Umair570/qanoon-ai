@@ -137,11 +137,17 @@ class RAGEngine:
             self.db.save_local(FAISS_INDEX_PATH)
             print(f"\n✅ SUCCESS! Local FAISS Index completely built and saved to {FAISS_INDEX_PATH}.")
 
-    def search(self, query, k=5):
+    def search(self, query, k=20):
         if not self.db:
             return []
         try:
-            results = self.db.similarity_search(query, k=k)
+            # 🚀 UPGRADED: Uses MMR to force FAISS to find diverse legal chunks!
+            results = self.db.max_marginal_relevance_search(
+                query, 
+                k=k, 
+                fetch_k=k * 3, # Fetches 60 chunks, then picks the 20 best/most diverse
+                lambda_mult=0.5 # 0.5 is the perfect balance between relevance and diversity
+            )
             return [
                 {
                     "text": doc.page_content, 
