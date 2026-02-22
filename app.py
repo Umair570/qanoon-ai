@@ -69,9 +69,23 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 
 app = Flask(__name__)
 
-def generate_groq_response(prompt):
+def generate_gemini_response(prompt):
     try:
         for chunk in llm.stream(prompt):
+            # 📊 THE TOKEN MONITOR: Catches Google's official token receipt on the final chunk
+            if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
+                usage = chunk.usage_metadata
+                in_tokens = usage.get('input_tokens', 0)
+                out_tokens = usage.get('output_tokens', 0)
+                total_tokens = usage.get('total_tokens', 0)
+                
+                print("\n" + "="*50)
+                print(f"📊 [LIVE TOKEN MONITOR]")
+                print(f"📥 Input (Reading PDFs) : {in_tokens} tokens")
+                print(f"📤 Output (Writing Urdu): {out_tokens} tokens")
+                print(f"📈 Total for this query : {total_tokens} tokens")
+                print("="*50 + "\n")
+
             if chunk.content:
                 yield chunk.content
         return  
@@ -97,7 +111,7 @@ def consult():
     context = ""
     if rag:
         try:
-            docs = rag.search(user_text, k=5) 
+            docs = rag.search(user_text, k=8) 
             if docs:
                 for doc in docs:
                     # ⚖️ THE BALANCED FIX: Cap at 2000 characters to save tokens 
@@ -157,7 +171,7 @@ def consult():
     )
 
     full_prompt = f"{system_prompt}\n\nDATA:\n{context}\n\nQUERY: {user_text}"
-    return Response(stream_with_context(generate_groq_response(full_prompt)), mimetype='text/plain')
+    return Response(stream_with_context(generate_gemini_response(full_prompt)), mimetype='text/plain')
 
 LAWYERS_DB_PATH = os.path.join("backend", "data", "raw", "lawyers_db.json")
 
