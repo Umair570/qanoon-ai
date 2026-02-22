@@ -11,19 +11,28 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 sys.path.append(os.getcwd()) 
 load_dotenv()  
 
-gemini_api_key = os.getenv("GEMINI_API_KEY")
+# 1. Store multiple keys in a list
+# Add GEMINI_KEY_2 and GEMINI_KEY_3 to your .env or Render Environment Variables
+GEMINI_KEYS = [
+    os.getenv("GEMINI_KEY_1"),
+    os.getenv("GEMINI_KEY_2"),
+    os.getenv("GEMINI_KEY_3")
+]
 
-if not gemini_api_key:
-    print("❌ ERROR: GEMINI_API_KEY not found in environment.")
+# Filter out None values to prevent initialization errors
+GEMINI_KEYS = [k for k in GEMINI_KEYS if k]
 
-# Initialize LLM with Google Gemini (Safety Filters DISABLED)
-try:
-    llm = ChatGoogleGenerativeAI(
+if not GEMINI_KEYS:
+    print("❌ ERROR: No Gemini API keys found in environment.")
+
+def create_llm(api_key):
+    """Helper to initialize the LLM with a specific key."""
+    return ChatGoogleGenerativeAI(
         model="gemini-2.5-flash", 
-        temperature=0.0,  
-        api_key=gemini_api_key,
-        max_tokens=4096, # 🚀 Output ceiling raised to prevent mid-sentence freezing
-        max_retries=1,
+        temperature=0.3, # Slightly adjusted for better legal nuance
+        api_key=api_key,
+        max_tokens=4096,
+        max_retries=0, # We handle retries manually via key rotation
         safety_settings={
             "HARM_CATEGORY_DANGEROUS_CONTENT": "BLOCK_NONE",
             "HARM_CATEGORY_HATE_SPEECH": "BLOCK_NONE",
@@ -31,9 +40,13 @@ try:
             "HARM_CATEGORY_SEXUALLY_EXPLICIT": "BLOCK_NONE"
         }
     )
-    print("⚡ SUCCESS: Gemini AI Model Ready (Safety Unlocked)!")
+
+# Initial setup using the first available key
+try:
+    llm = create_llm(GEMINI_KEYS[0])
+    print(f"⚡ SUCCESS: Gemini AI Model Ready (Using Key 1/{len(GEMINI_KEYS)})")
 except Exception as e:
-    print(f"❌ ERROR: Gemini Initialization Failed - {e}")
+    print(f"❌ ERROR: Initial Gemini Setup Failed - {e}")
 
 rag = None
 try:
@@ -69,35 +82,47 @@ threading.Thread(target=keep_brain_awake, daemon=True).start()
 app = Flask(__name__)
 
 def generate_gemini_response(prompt):
-    try:
-        for chunk in llm.stream(prompt):
-            # 📊 THE TOKEN MONITOR
-            if hasattr(chunk, 'usage_metadata') and chunk.usage_metadata:
-                usage = chunk.usage_metadata
+    """Loops through GEMINI_KEYS if a rate limit is hit."""
+    for i, key in enumerate(GEMINI_KEYS):
+        try:
+            # Initialize a temporary LLM with the current key from the list
+            current_llm = create_llm(key)
+            
+            # Using .invoke() for a single solid response (No streaming)
+            response = current_llm.invoke(prompt)
+            
+            # 📊 THE TOKEN MONITOR (Updated for .invoke)
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                usage = response.usage_metadata
                 in_tokens = usage.get('input_tokens', 0)
                 out_tokens = usage.get('output_tokens', 0)
                 total_tokens = usage.get('total_tokens', 0)
                 
                 print("\n" + "="*50)
-                print(f"📊 [LIVE TOKEN MONITOR]")
+                print(f"📊 [TOKEN MONITOR - KEY {i+1}]")
                 print(f"📥 Input (Reading PDFs) : {in_tokens} tokens")
                 print(f"📤 Output (Writing Urdu): {out_tokens} tokens")
                 print(f"📈 Total for this query : {total_tokens} tokens")
                 print("="*50 + "\n")
 
-            if chunk.content:
-                yield chunk.content
-        return  
+            # Return the content as a single yield since the route expects a generator
+            if response.content:
+                yield response.content
+            return  # Exit the function successfully
 
-    except Exception as e:
-        error_msg = str(e).lower()
-        if '429' in error_msg or 'rate_limit' in error_msg:
-            yield "\n\n### ⏳ Limit Reached\nPlease wait 60 seconds, take a deep breath, and ask again. If still fails then daily limit is reached. Try again tomorrow."
-            return 
-        else:
-            yield f"\n\n### ⚠️ System Interruption\nAn unexpected error occurred: {str(e)}"
-            return
+        except Exception as e:
+            error_msg = str(e).lower()
+            # If the error is a Rate Limit (429), try the next key
+            if '429' in error_msg or 'rate_limit' in error_msg or 'resource_exhausted' in error_msg:
+                print(f"⚠️ Key {i+1} limit reached. Switching to next key...")
+                continue 
+            else:
+                # For any other error, yield the error and stop
+                yield f"\n\n### ⚠️ System Interruption\nAn unexpected error occurred: {str(e)}"
+                return
 
+    # If the loop finishes without returning, all keys failed
+    yield "\n\n### ⏳ All Limits Reached\nPlease wait 60 seconds. All provided API keys are currently exhausted. If still fails then try again tomorrow"
 @app.route('/')
 def home(): return render_template('index.html')
 
