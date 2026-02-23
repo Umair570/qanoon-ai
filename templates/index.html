@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Qanoon AI - Pakistan</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
         :root {
             --bg-dark: #09090b;
@@ -103,6 +106,47 @@
             input { padding: 12px 15px; font-size: 0.95rem; }
             button { width: 50px; font-size: 1.2rem; }
         }
+
+        /* Container to keep text and icons in a neat row */
+        .creator-section {
+            display: flex;
+            align-items: center;
+            justify-content: center; /* Centers the whole block horizontally */
+            gap: 15px; /* Adds a nice gap between your name and the icons */
+            margin-top: 30px;
+            padding-bottom: 20px;
+        }
+
+        .creator-text {
+            font-size: 16px;
+            color: #555555;
+            font-weight: 500;
+        }
+
+        /* Icon styling and hover effects */
+        .social-icons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .social-icons a {
+            color: #555555;
+            font-size: 24px;
+            text-decoration: none;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+
+        .social-icons a:hover {
+            transform: scale(1.1); /* Slight pop effect */
+        }
+
+        .social-icons a:hover .fa-github {
+            color: #171515; /* GitHub Black */
+        }
+
+        .social-icons a:hover .fa-linkedin {
+            color: #0077b5; /* LinkedIn Blue */
+        }
         
     </style>
 </head>
@@ -139,7 +183,19 @@
             <button id="sendBtn" onclick="sendUserMessage()">➤</button>
         </div>
         
-        <div class="footer">Created by Muhammad Umair Ashraf</div>
+        <div class="creator-section">
+    <span class="creator-text">Created by Muhammad Umair Ashraf</span>
+    
+    <div class="social-icons">
+        <a href="https://github.com/Umair570" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-github"></i>
+        </a>
+        
+        <a href="https://www.linkedin.com/in/muhammad-umair-ashraf-3719882b9" target="_blank" rel="noopener noreferrer">
+            <i class="fab fa-linkedin"></i>
+        </a>
+    </div>
+</div>
     </div>
 
     <script>
